@@ -16,9 +16,8 @@ def hyperparam_space_fn(trial):
     }
 
 with mlflow.start_run() as run:
-    run_id = run.info.run_id
     model = MetaModel(
-        run_id=run_id,
+        run_id=run.info.run_id,
         group_col="cat_id",
         id_cols=["id"],
         date_col="date",
