@@ -2,16 +2,6 @@
 
 Distributed ML forecasting model for group based training and inference.
 
-# system design
-
-## training
-
-![Screenshot](training_design.png)
-
-## inference
-
-![Screenshot](inference_design.png)
-
 # usage
 
 ```
@@ -43,3 +33,13 @@ with mlflow.start_run() as run:
 model = mlflow.pyfunc.load_model(f"runs:/{run.info.run_id}/meta_model")
 model.predict(df).show()
 ```
+
+# system design
+
+## training
+
+![Screenshot](training_design.png)
+
+## inference
+
+![Screenshot](inference_design.png)
