@@ -1,3 +1,7 @@
 example_dataset/
 *.sqlite
+*.html
+*.parquet
+*.csv
+mlruns/
 __pycache__
