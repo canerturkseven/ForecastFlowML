@@ -125,67 +125,6 @@ class Optimizer:
 
         return cv_forecast.groupby(["cv"]).apply(calculate_metrics)
 
-    # def run(self, df):
-    #     def objective_fn(trial):
-    #         model_artifacts = []
-    #         n_models = self.max_forecast_horizon // self.model_horizon
-
-    #         for i in range(n_models):
-    #             model = LGBMRegressor(**self.hyperparam_space_fn(trial))
-    #             forecast_horizon = list(
-    #                 range(i * self.model_horizon + 1, (i + 1) * self.model_horizon + 1)
-    #             )
-    #             features = self._filter_features(
-    #                 df=df, forecast_horizon=forecast_horizon
-    #             )
-    #             cv = TimeBasedSplit(
-    #                 date_col=self.date_col,
-    #                 date_frequency=self.date_frequency,
-    #                 n_splits=self.n_cv_splits,
-    #                 forecast_horizon=forecast_horizon,
-    #                 step_length=self.max_forecast_horizon,
-    #                 end_offset=self.max_forecast_horizon - max(forecast_horizon),
-    #             )
-    #             model_forecast = self._cross_val_forecast(
-    #                 model=model, df=df, cv=cv.split(df), features=features
-    #             )
-
-    #             model.fit(df[features], df[self.target_col])
-
-    #             model_artifact = ModelArtifact(
-    #                 model_name = f"fh_{i}",
-    #                 model=model,
-    #                 forecast_horizon=forecast_horizon,
-    #                 model_input_example=df[features].head(1),
-    #                 forecast=model_forecast,
-    #             )
-    #             model_artifacts.append(model_artifact)
-
-    #         forecast = pd.concat(
-    #             model_artifact.forecast for model_artifact in model_artifacts
-    #         )
-    #         cv_metrics = self._evaluate(forecast)
-    #         cv_artifact = CrossValidationArtifact(
-    #             cv_metrics=cv_metrics,
-    #             forecast=forecast,
-    #             id_cols=self.id_cols,
-    #             df_train=df,
-    #             date_col=self.date_col,
-    #             target_col=self.target_col,
-    #         )
-
-    #         trial.set_user_attr("cv_artifact", cv_artifact)
-    #         trial.set_user_attr("model_artifacts", model_artifacts)
-
-    #         return cv_metrics[self.metric].mean()
-
-    #     study = optuna.create_study(direction="minimize")
-    #     study.optimize(
-    #         objective_fn,
-    #         n_trials=self.max_hyperparam_evals,
-    #         callbacks=[self._best_trial_callback],
-    #     )
-
     def _objective_fn(self, trial, df):
         model_artifacts = []
         n_models = self.max_forecast_horizon // self.model_horizon
@@ -244,3 +183,4 @@ class Optimizer:
             n_trials=self.max_hyperparam_evals,
             callbacks=[self._best_trial_callback],
         )
+        self._log_optimization_study(study)

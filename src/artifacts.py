@@ -27,9 +27,9 @@ class ModelArtifact:
         signature = infer_signature(self.model_input_example)
         mlflow.lightgbm.log_model(
             lgb_model=self.model,
-            artifact_path=f"models/model_{self.model_name}",
+            artifact_path=f"models/{self.model_name}",
             signature=signature,
-            metadata={"forecast_horizon": list(map(str, self.forecast_horizon))},
+            metadata={"forecast_horizon": self.forecast_horizon},
         )
 
     def log_feature_importance(self):
@@ -82,5 +82,5 @@ class CrossValidationArtifact:
         mlflow.log_artifact("forecast.parquet")
 
     def log_cv_metrics(self):
-        self.forecast.to_csv("cv_metric.csv")
-        mlflow.log_artifact("cv_metric.csv")
+        self.cv_metrics.to_csv("cv_metrics.csv")
+        mlflow.log_artifact("cv_metrics.csv")
