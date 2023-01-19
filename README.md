@@ -4,7 +4,13 @@ Distributed ML forecasting model for group based training and inference.
 
 # system design
 
-![Screenshot](design.png)
+## training
+
+![Screenshot](training_design.png)
+
+## inference
+
+![Screenshot](inference_design.png)
 
 # usage
 
@@ -27,7 +33,7 @@ with mlflow.start_run() as run:
         model_horizon=28,
         target_col="sales",
         tracking_uri="http://127.0.0.1:5000",
-        max_hyperparam_evals=30,
+        max_hyperparam_evals=50,
         metric="wmape",
         hyperparam_space_fn=hyperparam_space_fn,
     )
