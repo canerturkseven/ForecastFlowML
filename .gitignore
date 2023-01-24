@@ -6,3 +6,5 @@ example_dataset/
 mlruns/
 __pycache__
 data/
+dist/
+*.egg-info
