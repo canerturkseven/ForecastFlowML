@@ -8,7 +8,7 @@ from optuna.visualization import (
 )
 from lightgbm import LGBMRegressor
 from mlforecastflow.time_based_split import TimeBasedSplit
-from artifacts import ModelArtifact, CrossValidationArtifact
+from mlforecastflow.artifacts import ModelArtifact, CrossValidationArtifact
 import pandas as pd
 from sklearn.metrics import (
     mean_squared_error,
