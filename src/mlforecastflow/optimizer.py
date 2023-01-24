@@ -7,7 +7,7 @@ from optuna.visualization import (
     plot_param_importances,
 )
 from lightgbm import LGBMRegressor
-from time_based_split import TimeBasedSplit
+from mlforecastflow.time_based_split import TimeBasedSplit
 from artifacts import ModelArtifact, CrossValidationArtifact
 import pandas as pd
 from sklearn.metrics import (

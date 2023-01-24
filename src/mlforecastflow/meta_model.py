@@ -2,7 +2,7 @@ import mlflow
 from mlflow import MlflowClient
 import pandas as pd
 import pyspark.sql.functions as F
-from optimizer import Optimizer
+from mlforecastflow.optimizer import Optimizer
 
 
 class MetaModel(mlflow.pyfunc.PythonModel):

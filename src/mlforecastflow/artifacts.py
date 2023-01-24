@@ -3,7 +3,6 @@ import pandas as pd
 from lightgbm import LGBMRegressor
 from mlflow.models.signature import infer_signature
 import plotly.express as px
-import plotly.graph_objs as go
 from typing import List
 
 
