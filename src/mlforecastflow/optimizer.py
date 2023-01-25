@@ -106,12 +106,12 @@ class Optimizer:
                 model_artifact.log_model()
                 model_artifact.log_feature_importance()
 
-        cv_artifact = trial.user_attrs.get("cv_artifact")
-        cv_artifact.log_forecast()
-        cv_artifact.log_forecast_graph()
-        cv_artifact.log_cv_metrics()
+            cv_artifact = trial.user_attrs.get("cv_artifact")
+            cv_artifact.log_forecast()
+            cv_artifact.log_forecast_graph()
+            cv_artifact.log_cv_metrics()
 
-        mlflow.log_metric(self.metric, trial.value)
+            mlflow.log_metric(self.metric, trial.value)
 
     def _evaluate(self, cv_forecast):
         def calculate_metrics(df):
@@ -183,4 +183,5 @@ class Optimizer:
             n_trials=self.max_hyperparam_evals,
             callbacks=[self._best_trial_callback],
         )
+        mlflow.log_params(study.best_params)
         self._log_optimization_study(study)
