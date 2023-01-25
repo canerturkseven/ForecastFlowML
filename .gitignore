@@ -1,8 +1,5 @@
-example_dataset/
 *.sqlite
 *.html
-*.parquet
-*.csv
 mlruns/
 __pycache__
 dist/
