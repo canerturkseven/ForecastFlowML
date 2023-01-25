@@ -4,3 +4,4 @@ mlruns/
 __pycache__
 dist/
 *.egg-info
+*.csv
