@@ -19,6 +19,7 @@ spark = (
 
 df_train, df_test = load_wallmart()
 
+
 def hyperparam_space_fn(trial):
     return {
         "n_estimators": trial.suggest_int("n_estimators", 50, 100),

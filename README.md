@@ -38,8 +38,8 @@ model.predict(df).show()
 
 ## training
 
-![Screenshot](training_design.png)
+![Screenshot](assets/training_design.png)
 
 ## inference
 
-![Screenshot](inference_design.png)
+![Screenshot](assets/inference_design.png)
