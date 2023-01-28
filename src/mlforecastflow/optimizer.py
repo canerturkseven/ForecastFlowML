@@ -30,11 +30,13 @@ class Optimizer:
         date_frequency,
         metric,
         max_hyperparam_evals,
+        cv_step_length,
     ):
         self.id_cols = id_cols
         self.date_col = date_col
         self.target_col = target_col
         self.max_forecast_horizon = max_forecast_horizon
+        self.cv_step_length = cv_step_length
         self.model_horizon = model_horizon
         self.hyperparam_space_fn = hyperparam_space_fn
         self.date_frequency = date_frequency
@@ -44,9 +46,13 @@ class Optimizer:
 
     def _filter_features(self, df, forecast_horizon):
         numeric_cols = df.select_dtypes("number").columns
-        not_allowed_lags = [f"lag_{i}(_|$)" for i in range(1, max(forecast_horizon))]
+        remove_lags = [
+            f"lag_{i}(_|$)"
+            for i in range(1, self.max_forecast_horizon + 1)
+            if i != max(forecast_horizon)
+        ]
         target = [f"^{self.target_col}$"]
-        combined_regex = "(" + ")|(".join(not_allowed_lags + target) + ")"
+        combined_regex = "(" + ")|(".join(remove_lags + target) + ")"
         return [
             col
             for col in numeric_cols
@@ -74,7 +80,7 @@ class Optimizer:
         for i, fold in enumerate(cv):
 
             train_idx, test_idx = fold[0], fold[1]
-            df_train, df_test = df.iloc[train_idx], df.iloc[test_idx]
+            df_train, df_test = df.iloc[train_idx], df.copy().iloc[test_idx]
 
             model.fit(df_train[features], df_train[self.target_col])
             df_test["forecast"] = model.predict(df_test[features])
@@ -140,26 +146,26 @@ class Optimizer:
                 date_frequency=self.date_frequency,
                 n_splits=self.n_cv_splits,
                 forecast_horizon=forecast_horizon,
-                step_length=self.max_forecast_horizon,
+                step_length=self.cv_step_length,
                 end_offset=self.max_forecast_horizon - max(forecast_horizon),
             )
             model_forecast = self._cross_val_forecast(
                 model=model, df=df, cv=cv.split(df), features=features
             )
-
-            model.fit(df[features], df[self.target_col])
-
-            model_artifact = ModelArtifact(
-                model_name=f"fh_{i}",
-                model=model,
-                forecast_horizon=forecast_horizon,
-                model_input_example=df[features].head(1),
-                forecast=model_forecast,
+            model_artifacts.append(
+                ModelArtifact(
+                    model_name=f"fh_{i}",
+                    model=model,
+                    df_train=df,
+                    features=features,
+                    target_col=self.target_col,
+                    forecast_horizon=forecast_horizon,
+                    forecast=model_forecast,
+                )
             )
-            model_artifacts.append(model_artifact)
 
         forecast = pd.concat(
-            model_artifact.forecast for model_artifact in model_artifacts
+            [model_artifact.forecast for model_artifact in model_artifacts]
         )
         cv_metrics = self._evaluate(forecast)
         cv_artifact = CrossValidationArtifact(

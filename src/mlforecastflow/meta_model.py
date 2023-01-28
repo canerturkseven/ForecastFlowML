@@ -8,7 +8,6 @@ from mlforecastflow.optimizer import Optimizer
 class MetaModel(mlflow.pyfunc.PythonModel):
     def __init__(
         self,
-        run_id,
         id_cols,
         group_col,
         date_col,
@@ -21,9 +20,8 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         max_hyperparam_evals,
         metric,
         hyperparam_space_fn,
+        cv_step_length=None,
     ):
-
-        self.run_id = run_id
         self.id_cols = id_cols
         self.group_col = group_col
         self.date_col = date_col
@@ -31,6 +29,9 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         self.date_frequency = date_frequency
         self.n_cv_splits = n_cv_splits
         self.max_forecast_horizon = max_forecast_horizon
+        self.cv_step_length = (
+            cv_step_length if cv_step_length is not None else max_forecast_horizon
+        )
         self.model_horizon = model_horizon
         self.tracking_uri = tracking_uri
         self.max_hyperparam_evals = max_hyperparam_evals
@@ -53,14 +54,16 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         max_hyperparam_evals = self.max_hyperparam_evals
         n_cv_splits = self.n_cv_splits
         hyperparam_space_fn = self.hyperparam_space_fn
-        run_id = self.run_id
+        #run_id = self.run_id
         group_col = self.group_col
         tracking_uri = self.tracking_uri
+        cv_step_length = self.cv_step_length
 
         @F.pandas_udf("status string", functionType=F.PandasUDFType.GROUPED_MAP)
         def train_udf(df):
             mlflow.set_tracking_uri(tracking_uri)
             group_name = df[group_col].iloc[0]
+            run_id = df['run_id'].iloc[0]
             with mlflow.start_run(run_id=run_id):
                 with mlflow.start_run(run_name=group_name, nested=True):
 
@@ -71,6 +74,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
                         id_cols=id_cols,
                         date_col=date_col,
                         target_col=target_col,
+                        cv_step_length=cv_step_length,
                         max_forecast_horizon=max_forecast_horizon,
                         model_horizon=model_horizon,
                         hyperparam_space_fn=hyperparam_space_fn,
@@ -83,12 +87,15 @@ class MetaModel(mlflow.pyfunc.PythonModel):
 
             return pd.DataFrame([{"status": "ok"}])
 
-        (
-            df.withColumn("run_id", F.lit(self.run_id))
-            .groupby(self.group_col)
-            .apply(train_udf)
-            .collect()
-        )
+        with mlflow.start_run() as run:
+            self.run_id = run.info.run_id
+            mlflow.pyfunc.log_model(python_model=self, artifact_path="meta_model")
+            (
+                df.withColumn("run_id", F.lit(self.run_id))
+                .groupby(self.group_col)
+                .apply(train_udf)
+                .collect()
+            )
 
     def predict(self, context, model_input):
         tracking_uri = self.tracking_uri

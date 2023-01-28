@@ -12,18 +12,24 @@ class ModelArtifact:
         *,
         model_name: str,
         model: LGBMRegressor,
+        df_train: pd.DataFrame,
+        features: List[str],
+        target_col: str,
         forecast_horizon: List[int],
         forecast: pd.DataFrame,
-        model_input_example: pd.DataFrame,
     ):
         self.model_name = model_name
         self.model = model
+        self.df_train = df_train
+        self.features = features
+        self.target_col = target_col
         self.forecast_horizon = forecast_horizon
         self.forecast = forecast
-        self.model_input_example = model_input_example
 
     def log_model(self):
-        signature = infer_signature(self.model_input_example)
+        X, y = self.df_train[self.features], self.df_train[self.target_col]
+        self.model.fit(X, y)
+        signature = infer_signature(X)
         mlflow.lightgbm.log_model(
             lgb_model=self.model,
             artifact_path=f"models/{self.model_name}",
@@ -34,7 +40,7 @@ class ModelArtifact:
     def log_feature_importance(self):
         df_importance = pd.DataFrame(
             {
-                "feature": self.model_input_example.columns,
+                "feature": self.features,
                 "importance": self.model.feature_importances_,
             }
         ).sort_values(by=["importance"])
