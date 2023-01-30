@@ -1,37 +1,72 @@
-# distributed-ml-forecaster
+# ForecastMLflow: Scalable Machine Learning Forecasting Framework
 
-Distributed ML forecasting model for group based training and inference.
+ForecastMLFlow is a machine learning forecasting framework that integrates MLflow, Spark and Optuna. It provides a scalable solution for time series forecasting tasks by utilizing Spark for distributed model training, Optuna for hyperparameter tuning and MLflow for experiment tracking and model management. With forecastmlflow, data scientists can streamline their workflow and iterate models faster to improve performance.
 
-# usage
+# Key Features
+
+- Uses Spark for parallel training of models per group and forecast horizon.
+- Integrates MLflow for experiment tracking, artifact management and model registration.
+- Incorporates Optuna for hyperparameter tuning and model selection.
+- Supports LightGBM and XGBoost algorithms.
+
+# Installation
+
+You can install the packaging using the following command.
 
 ```
+pip install "git+https://github.com/canerturkseven/forecastmlflow"
+```
+
+# Usage
+
+```
+from forecastmlflow.meta_model import MetaModel
+from forecastmlflow.data.loader import load_walmart
+from pyspark.sql import SparkSession
+
+# create spark session
+spark = (
+    SparkSession.builder.master("local[4]")
+    .config("spark.driver.memory", "20g")
+    .config("spark.sql.execution.arrow.enabled", "true")
+    .getOrCreate()
+)
+
+# load sample data from forecastmlflow
+df_train, df_test = load_walmart(spark)
+
+# define optuna hyperparameter space
 def hyperparam_space_fn(trial):
     return {
         "n_estimators": trial.suggest_int("n_estimators", 50, 100),
         "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1),
     }
 
-with mlflow.start_run() as run:
-    model = MetaModel(
-        run_id=run.info.run_id,
-        group_col="cat_id",
-        id_cols=["id"],
-        date_col="date",
-        date_frequency="days",
-        n_cv_splits=5,
-        max_forecast_horizon=28,
-        model_horizon=7,
-        target_col="sales",
-        tracking_uri="http://127.0.0.1:5000",
-        max_hyperparam_evals=50,
-        metric="wmape",
-        hyperparam_space_fn=hyperparam_space_fn,
-    )
-    mlflow.pyfunc.log_model(python_model=model, artifact_path="meta_model")
-    model.train(df)
+# initialize model
+model = MetaModel(
+    group_col="cat_id",    # column to slice dataframe
+    id_cols=["id"],    # columns to use as time series identifier
+    date_col="date",    # date column
+    date_frequency="days",    # date frequency of dataset
+    n_cv_splits=5,    # number of time-based cv splits
+    cv_step_length=14,    # number of dates between cv folds
+    max_forecast_horizon=28,    # total forecast horizon
+    model_horizon=7,    # horizon per model
+    target_col="sales",    # target column
+    tracking_uri="http://127.0.0.1:5000",    # Mlflow tracking URI can be local or remote
+    max_hyperparam_evals=50,    # total number of optuna trials
+    scoring="neg_mean_squared_error",    # sklearn scoring metric
+    hyperparam_space_fn=hyperparam_space_fn,    # optuna hyperparameter space
+)
 
-model = mlflow.pyfunc.load_model(f"runs:/{run.info.run_id}/meta_model")
-model.predict(df).show()
+# train model
+model.train(df)
+
+# load model
+model = mlflow.pyfunc.load_model("runs:/d6962cbc77b24336895fb4a7b42c02e5/meta_model")
+
+# predict
+model.predict(df_test).write.parquet(forecast.parquet)
 ```
 
 # system design
