@@ -1,7 +1,7 @@
 import optuna
 from lightgbm import LGBMRegressor
-from mlforecastflow.time_based_split import TimeBasedSplit
-from mlforecastflow.artifacts import Artifact
+from forecastmlflow.time_based_split import TimeBasedSplit
+from forecastmlflow.artifacts import Artifact
 import pandas as pd
 from sklearn.model_selection import cross_val_score
 from mlflow.models.signature import infer_signature
@@ -74,7 +74,7 @@ class Optimizer:
         signature = infer_signature(df[self.features])
         model.fit(df[self.features], df[self.target_col])
         horizon_id = max(self.forecast_horizon) // len(self.forecast_horizon)
-        
+
         return Artifact(
             horizon_id=horizon_id,
             model=model,

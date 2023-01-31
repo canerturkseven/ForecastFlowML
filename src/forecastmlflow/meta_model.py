@@ -1,10 +1,9 @@
 import mlflow
 import re
-from mlflow import MlflowClient
 import pandas as pd
 import pyspark.sql.functions as F
-from mlforecastflow.optimizer import Optimizer
-from evaluator import Evaluator
+from forecastmlflow.optimizer import Optimizer
+from forecastmlflow.evaluator import Evaluator
 
 
 class MetaModel(mlflow.pyfunc.PythonModel):
@@ -18,10 +17,10 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         n_cv_splits,
         max_forecast_horizon,
         model_horizon,
-        tracking_uri,
         max_hyperparam_evals,
         scoring,
         hyperparam_space_fn,
+        tracking_uri="./mlruns",
         allow_lag_range=0,
         n_jobs=1,
         cv_step_length=None,

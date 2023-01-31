@@ -3,7 +3,7 @@ import sklearn
 import mlflow
 import pandas as pd
 import plotly.express as px
-import functools
+
 
 
 class Evaluator:

@@ -1,17 +1,16 @@
+#%%
 from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
-import mlflow
-from mlforecastflow.meta_model import MetaModel
-from mlforecastflow.data.loader import load_walmart
-
+from forecastmlflow.meta_model import MetaModel
+from forecastmlflow.data.loader import load_walmart
 
 spark = (
     SparkSession.builder.master("local[4]")
     .config("spark.driver.memory", "30g")
     .config("spark.sql.shuffle.partitions", 4)
-    .config("spark.driver.maxResultSize", "5g")
+    .config("spark.driver.maxResultSize", "10g")
     .config("spark.sql.execution.arrow.enabled", "true")
     .config("spark.executor.heartbeatInterval", "36000000s")
+    .config("spark.sql.adaptive.enabled", "false")
     .config("spark.network.timeout", "72000000s")
     .getOrCreate()
 )
@@ -26,22 +25,19 @@ def hyperparam_space_fn(trial):
     }
 
 
-with mlflow.start_run() as run:
-    run_id = run.info.run_id
-    model = MetaModel(
-        run_id=run_id,
-        group_col="cat_id",
-        id_cols=["id"],
-        date_col="date",
-        date_frequency="days",
-        n_cv_splits=4,
-        model_horizon=7,
-        max_forecast_horizon=7 * 4,
-        target_col="sales",
-        tracking_uri="./mlruns",
-        max_hyperparam_evals=5,
-        metric="wmape",
-        hyperparam_space_fn=hyperparam_space_fn,
-    )
-    mlflow.pyfunc.log_model(python_model=model, artifact_path="meta_model")
-    model.train(df_train)
+model = MetaModel(
+    group_col="cat_id",
+    id_cols=["id"],
+    date_col="date",
+    date_frequency="days",
+    n_cv_splits=5,
+    model_horizon=7,
+    max_forecast_horizon=7 * 4,
+    target_col="sales",
+    tracking_uri="./mlruns",
+    max_hyperparam_evals=1,
+    scoring="neg_mean_squared_error",
+    hyperparam_space_fn=hyperparam_space_fn,
+)
+model.train(df_train)
+#%%

@@ -21,25 +21,25 @@ pip install "git+https://github.com/canerturkseven/forecastmlflow"
 
 ```
 from forecastmlflow.meta_model import MetaModel
-from forecastmlflow.data.loader import load_walmart
+from forecastmlflow.data.loader import load_walmart_m5
 from pyspark.sql import SparkSession
 
 # create spark session
 spark = (
-    SparkSession.builder.master("local[4]")
-    .config("spark.driver.memory", "20g")
+    SparkSession.builder.master("local[*]")
+    .config("spark.driver.memory", "16g")
     .config("spark.sql.execution.arrow.enabled", "true")
     .getOrCreate()
 )
 
 # load sample data from forecastmlflow
-df_train, df_test = load_walmart(spark)
+df_train, df_test = load_walmart_m5(spark)
 
 # define optuna hyperparameter space
 def hyperparam_space_fn(trial):
     return {
-        "n_estimators": trial.suggest_int("n_estimators", 50, 100),
-        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.1),
+        "n_estimators": trial.suggest_int("n_estimators", 100, 150),
+        "learning_rate": trial.suggest_float("learning_rate", 0.2, 0.3),
     }
 
 # initialize model
@@ -48,13 +48,13 @@ model = MetaModel(
     id_cols=["id"],    # columns to use as time series identifier
     date_col="date",    # date column
     date_frequency="days",    # date frequency of dataset
-    n_cv_splits=5,    # number of time-based cv splits
-    cv_step_length=14,    # number of dates between cv folds
+    n_cv_splits=1,    # number of time-based cv splits
+    cv_step_length=28,    # number of dates between cv folds
     max_forecast_horizon=28,    # total forecast horizon
     model_horizon=7,    # horizon per model
     target_col="sales",    # target column
-    tracking_uri="http://127.0.0.1:5000",    # Mlflow tracking URI can be local or remote
-    max_hyperparam_evals=50,    # total number of optuna trials
+    tracking_uri="./mlruns",    # Mlflow tracking URI can be local or remote
+    max_hyperparam_evals=2,    # total number of optuna trials
     scoring="neg_mean_squared_error",    # sklearn scoring metric
     hyperparam_space_fn=hyperparam_space_fn,    # optuna hyperparameter space
 )
@@ -69,12 +69,6 @@ model = mlflow.pyfunc.load_model("runs:/d6962cbc77b24336895fb4a7b42c02e5/meta_mo
 model.predict(df_test).write.parquet(forecast.parquet)
 ```
 
-# system design
+# System design
 
-## training
-
-![Screenshot](assets/training_design.png)
-
-## inference
-
-![Screenshot](assets/inference_design.png)
+![Screenshot](assets/design.png)
