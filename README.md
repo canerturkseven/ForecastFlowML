@@ -25,7 +25,7 @@ This demo demonstrates the metrics and artifacts logged to MLflow after the trai
 
 ## Usage
 
-The following demonstrates how the framework can be used to build forecasting models using a sample of the Kaggle Walmart M5 Competition dataset.
+The following demonstrates how the framework can be used to build forecasting models using a sample of the Kaggle Walmart M5 Competition dataset. Full script can be found [here](https://github.com/canerturkseven/ForecastFlowML/blob/master/examples/demo.py).
 
 ### Spark
 
