@@ -1,8 +1,8 @@
-# ForecastFlowML: Scalable Machine Learning Forecasting Framework
+## ForecastFlowML: Scalable Machine Learning Forecasting Framework
 
 ForecastFlowML is a machine learning forecasting framework that integrates MLflow, Spark and Optuna. It provides a scalable solution for time series forecasting tasks by utilizing Spark for distributed model training, Optuna for hyperparameter tuning and MLflow for experiment tracking and model management. With ForecastFlowML, data scientists can streamline their workflow and iterate models faster to improve performance.
 
-# Key Features
+## Key Features
 
 - Uses Spark for parallel training of models per group and forecast horizon.
 - Integrates MLflow for experiment tracking, artifact management and model registration.
@@ -10,7 +10,7 @@ ForecastFlowML is a machine learning forecasting framework that integrates MLflo
 - Incorporates Optuna for hyperparameter tuning and model selection.
 - Supports LightGBM and XGBoost algorithms.
 
-# Installation
+## Installation
 
 You can install the packaging using the following command.
 
@@ -18,9 +18,37 @@ You can install the packaging using the following command.
 pip install "git+https://github.com/canerturkseven/forecastflowml"
 ```
 
-# Demo
+## Usage
 
-This demo demonstrates how the framework can be used to tackle the Kaggle Walmart M5 Competition.
+The following demonstrates how the framework can be used to build forecasting models using a sample of the Kaggle Walmart M5 Competition dataset.
+
+### Spark
+
+First, initialize the Spark environment. Framework is be able to train as many models in parallel as the number of cores in the cluster. Enable Pyarrow for faster data conversion to Pandas DataFrame. Disable Adaptive Query Execution (AQE) as it may combine smaller model fitting tasks into a single task.
+
+```
+from pyspark.sql import SparkSession
+spark = (
+    SparkSession.builder.master("local[8]")
+    .config("spark.driver.memory", "16g")
+    .config("spark.sql.execution.arrow.enabled", "true")
+    .config('spark.sql.adaptive.enabled', 'false')
+    .getOrCreate()
+)
+```
+
+As we initialized the spark cluster with 8 cores (1 driver, 7 workers), we can train 7 models in parallel in parallel.
+
+### Data Setup
+
+| id                   | cat_id  | date       | item_store_window_7_lag_7_mean | item_store_window_7_lag_14_mean | item_store_window_7_lag_21_mean | item_store_window_7_lag_28_mean | ... |
+| -------------------- | ------- | ---------- | ------------------------------ | ------------------------------- | ------------------------------- | ------------------------------- | --- |
+| FOODS_1_014_CA_1     | FOODS   | 2011-01-29 | 28.4                           | 30.2                            | 42.4                            | 30.1                            | ... |
+| FOODS_1_014_CA_1     | FOODS   | 2011-01-30 | 8.4                            | 3.2                             | 2.4                             | 3.1                             | ... |
+| HOBBIES_1_018_CA_1   | HOBBIES | 2011-01-29 | 10.4                           | 23.5                            | 0                               | null                            | ... |
+| HOBBIES_1_018_CA_1   | HOBBIES | 2011-01-30 | 28.4                           | 30.2                            | 1.2                             | null                            | ... |
+| HOUSEHOLD_1_018_CA_1 | HOBBIES | 2011-01-29 | 2832.4                         | 3042.2                          | null                            | null                            | ... |
+| HOUSEHOLD_1_018_CA_1 | HOBBIES | 2011-01-30 | 285.4                          | 154.2                           | null                            | null                            | ... |
 
 - Build 3 categories (Foods, Households, Hobbies) x 4 weeks (single model per week) = 12 models in parallel.
 - Optimize each model with Optuna.
