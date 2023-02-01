@@ -53,6 +53,7 @@ As we initialized the spark cluster with 8 cores (1 driver, 7 workers), we can t
 | HOBBIES_1_018_CA_1   | HOBBIES | 2011-01-30 | 28.4                           | 30.2                            | ... | 1     |
 | HOUSEHOLD_1_018_CA_1 | HOBBIES | 2011-01-29 | 2832.4                         | 3042.2                          | ... | 1     |
 | HOUSEHOLD_1_018_CA_1 | HOBBIES | 2011-01-30 | 285.4                          | 154.2                           | ... | 1     |
+| ...                  | ...     | ...        | ...                            | ...                             | ... | ...   |
 
 Store your data in Spark DataFrame with time series identifier, date and target column with features.
 For features, include the lag information with the pattern of `lag_{i}`.
@@ -182,6 +183,16 @@ Then, call the `predict` method with the test Spark DataFrame and call an action
 ```
 loaded_model.predict(df_test).write.parquet(forecast.parquet)
 ```
+
+| id                   | date       | forecast |
+| -------------------- | ---------- | -------- |
+| FOODS_1_014_CA_1     | 2015-01-29 | 52.4     |
+| FOODS_1_014_CA_1     | 2015-01-30 | 45.1     |
+| HOBBIES_1_018_CA_1   | 2011-01-29 | 15.0     |
+| HOBBIES_1_018_CA_1   | 2011-01-30 | 30.3     |
+| HOUSEHOLD_1_018_CA_1 | 2011-01-29 | 254.8    |
+| HOUSEHOLD_1_018_CA_1 | 2011-01-30 | 298.4    |
+| ...                  | ...        | ...      |
 
 ## System design
 

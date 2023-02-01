@@ -73,7 +73,7 @@ class Optimizer:
         forecast = self._cross_val_forecast(model, df, cv)
         signature = infer_signature(df[self.features])
         model.fit(df[self.features], df[self.target_col])
-        horizon_id = max(self.forecast_horizon) // len(self.forecast_horizon)
+        horizon_id = (max(self.forecast_horizon) // len(self.forecast_horizon)) - 1
 
         return Artifact(
             horizon_id=horizon_id,
