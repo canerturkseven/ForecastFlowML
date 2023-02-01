@@ -21,7 +21,7 @@ pip install "git+https://github.com/canerturkseven/forecastflowml"
 ## Demo
 
 This demo demonstrates the metrics and artifacts logged to MLflow after the training phase.
-![system_demo](assets/demo.gif)
+![system_demo](assets/system_demo.gif)
 
 ## Usage
 
