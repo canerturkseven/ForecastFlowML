@@ -49,13 +49,13 @@ df_train, df_test = load_walmart_m5(spark)
 # examine lag features include pattern of lag_{i}
 # model will filter lags (using regex pattern of lag_{i}) based on the model forecast horizon
 # example: if model horizon is [1, 2, 3] and lag_range = 2, then lag_3, lag_4 and lag_5 will be used as features.
-print(*df_train.columns)
+print(df_train.columns)
 
 # define optuna hyperparameter space
 def hyperparam_space_fn(trial):
     return {
-        "n_estimators": trial.suggest_int("n_estimators", 100, 150),
-        "learning_rate": trial.suggest_float("learning_rate", 0.2, 0.3),
+        "learning_rate": trial.suggest_float("learning_rate", 0.05, 0.3),
+        "num_leaves": trial.suggest_int("num_leaves", 30, 80),
     }
 
 # initialize the model
@@ -80,7 +80,7 @@ model = MetaModel(
     hyperparam_space_fn=hyperparam_space_fn,  # optuna hyperparameter space
 
     # mlflow parameters
-    tracking_uri="./mlruns",  # Mlflow tracking URI can be local or remote
+    tracking_uri="./mlruns",  # Mlflow tracking URI
 )
 
 # train model

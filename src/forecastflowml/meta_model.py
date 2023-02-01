@@ -21,7 +21,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         scoring,
         hyperparam_space_fn,
         tracking_uri="./mlruns",
-        allow_lag_range=0,
+        lag_feature_range=0,
         n_jobs=1,
         cv_step_length=None,
     ):
@@ -37,7 +37,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         )
         self.model_horizon = model_horizon
         self.tracking_uri = tracking_uri
-        self.allow_lag_range = allow_lag_range
+        self.lag_feature_range = lag_feature_range
         self.max_hyperparam_evals = max_hyperparam_evals
         self.scoring = scoring
         self.hyperparam_space_fn = hyperparam_space_fn
@@ -68,7 +68,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
                     f"(^|_)lag_{i}(_|$)"
                     for i in range(
                         max(forecast_horizon),
-                        max(forecast_horizon) + self.allow_lag_range + 1,
+                        max(forecast_horizon) + self.lag_feature_range + 1,
                     )
                 ]
             )
