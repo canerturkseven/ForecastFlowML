@@ -1,4 +1,8 @@
+import tempfile
+import os
+import shutil
 import mlflow
+from mlflow.models.signature import infer_signature
 import pandas as pd
 import plotly.express as px
 from optuna.visualization import (
@@ -10,21 +14,35 @@ from optuna.visualization import (
 
 class Artifact:
     def __init__(
-        self, *, horizon_id, model, signature, forecast_horizon, study, forecast
+        self,
+        *,
+        df_train,
+        horizon_id,
+        model,
+        study,
+        cv_forecast,
     ):
+        self.df_train = df_train
         self.horizon_id = horizon_id
         self.model = model
-        self.signature = signature
-        self.forecast_horizon = forecast_horizon
         self.study = study
-        self.forecast = forecast
+        self.cv_forecast = cv_forecast
+
+    def log_train_data(self):
+        tempdir = tempfile.mkdtemp()
+        try:
+            filepath = os.path.join(tempdir, f"{self.horizon_id}.parquet")
+            self.df_train.to_parquet(filepath)
+            mlflow.log_artifact(filepath, "train_data")
+        finally:
+            shutil.rmtree(tempdir)
 
     def log_model(self):
+        signature = infer_signature(self.df_train[self.model.feature_name_])
         mlflow.lightgbm.log_model(
             lgb_model=self.model,
             artifact_path=f"models/{self.horizon_id}",
-            signature=self.signature,
-            metadata={"forecast_horizon": self.forecast_horizon},
+            signature=signature,
         )
 
     def log_feature_importance(self):
@@ -35,8 +53,13 @@ class Artifact:
             }
         ).sort_values(by=["importance"])
         graph = px.bar(df_importance, y="feature", x="importance", orientation="h")
-        graph.write_html(f"{self.horizon_id}.html")
-        mlflow.log_artifact(f"{self.horizon_id}.html", "feature_importance")
+        tempdir = tempfile.mkdtemp()
+        try:
+            filepath = os.path.join(tempdir, f"{self.horizon_id}.html")
+            graph.write_html(filepath)
+            mlflow.log_artifact(filepath, "feature_importance")
+        finally:
+            shutil.rmtree(tempdir)
 
     def log_optimization_visualisation(self):
         for func, folder in [
@@ -44,14 +67,22 @@ class Artifact:
             (plot_parallel_coordinate, "parallel_coordinate"),
             (plot_param_importances, "param_importances"),
         ]:
+            tempdir = tempfile.mkdtemp()
             try:
-                func(self.study).write_html(f"{self.horizon_id}.html")
-                mlflow.log_artifact(
-                    f"{self.horizon_id}.html", f"optimisation_visualization/{folder}"
-                )
+                graph = func(self.study)
+                filepath = os.path.join(tempdir, f"{self.horizon_id}.html")
+                graph.write_html(filepath)
+                mlflow.log_artifact(filepath, f"optimisation_visualization/{folder}")
             except:
                 pass
+            finally:
+                shutil.rmtree(tempdir)
 
-    def log_forecast(self):
-        self.forecast.to_parquet(f"{self.horizon_id}.parquet")
-        mlflow.log_artifact(f"{self.horizon_id}.parquet", f"cv_forecast")
+    def log_cv_forecast(self):
+        tempdir = tempfile.mkdtemp()
+        try:
+            filepath = os.path.join(tempdir, f"{self.horizon_id}.parquet")
+            self.cv_forecast.to_parquet(filepath)
+            mlflow.log_artifact(filepath, "cv_forecast")
+        finally:
+            shutil.rmtree(tempdir)

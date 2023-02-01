@@ -1,9 +1,10 @@
+import tempfile
 import os
+import shutil
 import sklearn
 import mlflow
 import pandas as pd
 import plotly.express as px
-
 
 
 class Evaluator:
@@ -36,7 +37,7 @@ class Evaluator:
         for group_run_id in self.group_run_ids.values():
             with mlflow.start_run(run_id=group_run_id):
                 artifact_uri = mlflow.artifacts.download_artifacts(run_id=group_run_id)
-                train = pd.read_parquet(os.path.join(artifact_uri, "train.parquet"))
+                train = pd.read_parquet(os.path.join(artifact_uri, "train_data"))
                 cv_forecast = (
                     pd.read_parquet(os.path.join(artifact_uri, "cv_forecast"))
                     .pivot_table(
@@ -52,5 +53,10 @@ class Evaluator:
                     .groupby(self.date_col)
                     .sum(min_count=1)
                 )
-                graph.write_html("forecast_graph.html")
-                mlflow.log_artifact("forecast_graph.html")
+                tempdir = tempfile.mkdtemp()
+                try:
+                    filepath = os.path.join(tempdir, "cv_forecast_graph.html")
+                    graph.write_html(filepath)
+                    mlflow.log_artifact(filepath)
+                finally:
+                    shutil.rmtree(tempdir)

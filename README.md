@@ -184,15 +184,15 @@ Then, call the `predict` method with the test Spark DataFrame and call an action
 loaded_model.predict(df_test).write.parquet(forecast.parquet)
 ```
 
-| id                   | date       | forecast |
-| -------------------- | ---------- | -------- |
-| FOODS_1_014_CA_1     | 2015-01-29 | 52.4     |
-| FOODS_1_014_CA_1     | 2015-01-30 | 45.1     |
-| HOBBIES_1_018_CA_1   | 2011-01-29 | 15.0     |
-| HOBBIES_1_018_CA_1   | 2011-01-30 | 30.3     |
-| HOUSEHOLD_1_018_CA_1 | 2011-01-29 | 254.8    |
-| HOUSEHOLD_1_018_CA_1 | 2011-01-30 | 298.4    |
-| ...                  | ...        | ...      |
+| id                   | date       | prediction |
+| -------------------- | ---------- | ---------- |
+| FOODS_1_014_CA_1     | 2016-05-23 | 52.4       |
+| HOBBIES_1_018_CA_1   | 2016-05-23 | 15.0       |
+| HOUSEHOLD_1_018_CA_1 | 2016-05-23 | 254.8      |
+| FOODS_1_014_CA_1     | 2016-05-24 | 45.1       |
+| HOBBIES_1_018_CA_1   | 2016-05-24 | 30.3       |
+| HOUSEHOLD_1_018_CA_1 | 2016-05-24 | 298.4      |
+| ...                  | ...        | ...        |
 
 ## System design
 

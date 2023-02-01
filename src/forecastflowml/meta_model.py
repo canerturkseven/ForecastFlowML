@@ -1,5 +1,6 @@
 import mlflow
 import re
+
 import pandas as pd
 import pyspark.sql.functions as F
 from forecastflowml.optimizer import Optimizer
@@ -133,9 +134,6 @@ class MetaModel(mlflow.pyfunc.PythonModel):
 
             with mlflow.start_run(run_id=group_run_id):
 
-                df.to_parquet("train.parquet")
-                mlflow.log_artifact("train.parquet")
-
                 forecast_horizon = self._forecast_horizon(horizon_id)
                 features = self._filter_features(df, forecast_horizon)
 
@@ -158,7 +156,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
 
             return pd.DataFrame([{"status": "ok"}])
 
-        (
+        print(
             df.withColumn(
                 "horizon_id", F.explode(F.array(list(map(F.lit, range(n_horizon)))))
             )

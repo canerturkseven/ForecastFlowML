@@ -37,8 +37,8 @@ model = MetaModel(
     target_col="sales",  # target column
     date_frequency="days",  # date frequency (days, weeks, months, years) of dataset
     # model parameters
-    model_horizon=7,  # horizon per model
-    max_forecast_horizon=7 * 4,  # total forecast horizon
+    model_horizon=7 * 2,  # horizon per model
+    max_forecast_horizon=14 * 2,  # total forecast horizon
     lag_feature_range=2,  #
     # cross validation and optimisation parameters
     n_cv_splits=1,  # number of time-based cv splits
@@ -60,3 +60,5 @@ loaded_model = mlflow.pyfunc.load_model(f"runs:/{model.run_id}/meta_model")
 
 # make predicttions, call an action such as collect or write
 loaded_model.predict(df_test).write.parquet("forecast.parquet")
+
+# %%

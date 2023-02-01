@@ -4,7 +4,6 @@ from forecastflowml.time_based_split import TimeBasedSplit
 from forecastflowml.artifacts import Artifact
 import pandas as pd
 from sklearn.model_selection import cross_val_score
-from mlflow.models.signature import infer_signature
 
 
 class Optimizer:
@@ -70,18 +69,15 @@ class Optimizer:
 
     def _reuse_best_trial(self, study, model, df, cv):
         model = model.set_params(**study.best_params)
-        forecast = self._cross_val_forecast(model, df, cv)
-        signature = infer_signature(df[self.features])
+        cv_forecast = self._cross_val_forecast(model, df, cv)
         model.fit(df[self.features], df[self.target_col])
         horizon_id = (max(self.forecast_horizon) // len(self.forecast_horizon)) - 1
-
         return Artifact(
+            df_train=df,
             horizon_id=horizon_id,
             model=model,
-            signature=signature,
-            forecast_horizon=self.forecast_horizon,
             study=study,
-            forecast=forecast,
+            cv_forecast=cv_forecast,
         )
 
     def run(self, df):
@@ -102,7 +98,8 @@ class Optimizer:
         )
 
         artifact = self._reuse_best_trial(study, model, df, cv)
+        artifact.log_train_data()
         artifact.log_model()
         artifact.log_feature_importance()
-        artifact.log_forecast()
+        artifact.log_cv_forecast()
         artifact.log_optimization_visualisation()
