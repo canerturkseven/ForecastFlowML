@@ -37,13 +37,13 @@ model = MetaModel(
     target_col="sales",  # target column
     date_frequency="days",  # date frequency (days, weeks, months, years) of dataset
     # model parameters
-    model_horizon=7 * 2,  # horizon per model
-    max_forecast_horizon=14 * 2,  # total forecast horizon
+    model_horizon=7,  # horizon per model
+    max_forecast_horizon=28,  # total forecast horizon
     lag_feature_range=2,  #
     # cross validation and optimisation parameters
-    n_cv_splits=1,  # number of time-based cv splits
-    cv_step_length=7 * 4,  # number of dates between each cv folds
-    max_hyperparam_evals=1,  # total number of optuna trials
+    n_cv_splits=4,  # number of time-based cv splits
+    cv_step_length=28,  # number of dates between each cv folds
+    max_hyperparam_evals=5,  # total number of optuna trials
     scoring="neg_mean_squared_error",  # sklearn scoring metric
     hyperparam_space_fn=hyperparam_space_fn,  # optuna hyperparameter space
     # mlflow parameters
