@@ -41,7 +41,7 @@ model = MetaModel(
     max_forecast_horizon=28,  # total forecast horizon
     lag_feature_range=2,  #
     # cross validation and optimisation parameters
-    n_cv_splits=4,  # number of time-based cv splits
+    n_cv_splits=1,  # number of time-based cv splits
     cv_step_length=28,  # number of dates between each cv folds
     max_hyperparam_evals=1,  # total number of optuna trials
     scoring="neg_mean_squared_error",  # sklearn scoring metric

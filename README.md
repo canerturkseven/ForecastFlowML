@@ -141,9 +141,9 @@ model = MetaModel(
     feature_lag_range=2,
 
     # cross validation and optimisation parameters
-    n_cv_splits=2,
+    n_cv_splits=1,
     cv_step_length=7*4
-    max_hyperparam_evals=5,
+    max_hyperparam_evals=1,
     scoring="neg_mean_squared_error",
     hyperparam_space_fn=hyperparam_space_fn,
 
