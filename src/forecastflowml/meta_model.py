@@ -124,7 +124,10 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         group_run_ids = self._create_runs(df)
         n_horizon = max_forecast_horizon // model_horizon
 
-        @F.pandas_udf("status string", functionType=F.PandasUDFType.GROUPED_MAP)
+        @F.pandas_udf(
+            "group_name string, horizon_id int, status string",
+            functionType=F.PandasUDFType.GROUPED_MAP,
+        )
         def train_udf(df):
             mlflow.set_tracking_uri(tracking_uri)
             group_name = df[group_col].iloc[0]
@@ -154,10 +157,13 @@ class MetaModel(mlflow.pyfunc.PythonModel):
                 )
                 optimizer.run(df)
 
-            return pd.DataFrame([{"status": "ok"}])
+            return pd.DataFrame(
+                [{"group_name": group_name, "horizon_id": horizon_id, "status": "ok"}]
+            )
 
-        print(
-            df.withColumn(
+        (
+            df.withColumn("date", F.to_timestamp("date"))
+            .withColumn(
                 "horizon_id", F.explode(F.array(list(map(F.lit, range(n_horizon)))))
             )
             .groupby(group_col, "horizon_id")
