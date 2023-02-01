@@ -43,7 +43,7 @@ model = MetaModel(
     # cross validation and optimisation parameters
     n_cv_splits=4,  # number of time-based cv splits
     cv_step_length=28,  # number of dates between each cv folds
-    max_hyperparam_evals=5,  # total number of optuna trials
+    max_hyperparam_evals=1,  # total number of optuna trials
     scoring="neg_mean_squared_error",  # sklearn scoring metric
     hyperparam_space_fn=hyperparam_space_fn,  # optuna hyperparameter space
     # mlflow parameters

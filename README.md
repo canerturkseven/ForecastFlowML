@@ -12,7 +12,7 @@ ForecastFlowML is a machine learning forecasting framework that integrates MLflo
 
 ## Installation
 
-You can install the packaging using the following command.
+You can install the packaging using the following command. Also, ensure that you have installed `spark>=3.0`.
 
 ```
 pip install "git+https://github.com/canerturkseven/forecastflowml"
@@ -41,8 +41,6 @@ spark = (
     .getOrCreate()
 )
 ```
-
-As we initialized the spark cluster with 8 cores (1 driver, 7 workers), we can train 7 models in parallel in parallel.
 
 ### Data Setup
 
