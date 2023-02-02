@@ -8,7 +8,7 @@ ForecastFlowML is a machine learning forecasting framework that integrates MLflo
 - Integrates MLflow for experiment tracking, artifact management and model registration.
 - Includes built-in time based cross validation.
 - Incorporates Optuna for hyperparameter tuning and model selection.
-- Supports LightGBM and XGBoost algorithms.
+- Supports LightGBM algorithm (XGBoost is in progress).
 
 ## Installation
 
