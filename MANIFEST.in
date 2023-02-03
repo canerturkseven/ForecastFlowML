@@ -1,2 +1,2 @@
-graft src/mlforecastflow/data
+graft src/forecastflowml/data
 recursive-exclude __pycache__ *.py[cod] 
