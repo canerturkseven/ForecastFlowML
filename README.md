@@ -112,7 +112,7 @@ Now instantiate the `MetaModel` object and define parameters.
 - `max_forecast_horizon`: total forecast horizon. Must be multiple of `model_horizon`.
 - `feature_lag_range`: extra lags to use as features based on forecast horizon.
 
-### Cross validation and optimisation parameters
+#### Cross validation and optimisation parameters
 
 - `n_cv_splits`: number of time-based cv splits.
 - `cv_step_length`: number of dates between each cv folds.
@@ -120,7 +120,7 @@ Now instantiate the `MetaModel` object and define parameters.
 - `scoring="neg_mean_squared_error`: [sklearn scoring metric](https://scikit-learn.org/stable/modules/model_evaluation.html).
 - `hyperparam_space_fn`: optuna hyperparameter space.
 
-### MLflow server parameter:
+#### MLflow server parameter:
 
 - `tracking_uri`: [Mlflow tracking URI](https://mlflow.org/docs/latest/tracking.html). Can be local path (`./mlruns`) or HTTP server (`https://168:0.0.1:5000`).
 
