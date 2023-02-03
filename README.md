@@ -196,3 +196,7 @@ loaded_model.predict(df_test).write.parquet(forecast.parquet)
 ## System design
 
 ![Screenshot](assets/design.png)
+
+## Notes
+
+Special thanks to Nikhil Gupta ([@ngupta23](https://github.com/ngupta23)) for his review and precious feedback!
