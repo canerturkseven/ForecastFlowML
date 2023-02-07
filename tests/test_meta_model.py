@@ -7,4 +7,4 @@ def test_dummy():
 
 def test_spark_create():
     spark = SparkSession.builder.master("local[*]").getOrCreate()
-    spark.range(5).show()
+    spark.range(5).write.parquet("asd.parquet")
