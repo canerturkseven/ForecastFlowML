@@ -18,4 +18,5 @@ jobs:
       - uses: actions/setup-python@v4
         with: 
           python-version: ${{matrix.python.version}}
+      - name: run pytest
         run: pytest tests
