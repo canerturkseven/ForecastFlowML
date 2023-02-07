@@ -27,4 +27,4 @@ jobs:
       - name: install tox
         run: pip install tox 
       - name: test with tox
-        run: tox ${{ matrix.python.toxenv }}
+        run: tox -e ${{ matrix.python.toxenv }}
