@@ -2,8 +2,10 @@
 # import packages
 import mlflow
 from forecastflowml.meta_model import MetaModel
+from forecastflowml.preprocessing import FeatureExtractor
 from forecastflowml.data.loader import load_walmart_m5
 from pyspark.sql import SparkSession
+import pyspark.sql.functions as F
 
 # create spark environment
 spark = (
@@ -15,18 +17,48 @@ spark = (
 )
 
 # load sample dataset
-df_train, df_test = load_walmart_m5(spark)
+df = load_walmart_m5(spark)
 
-# examine dataset columns
-print(df_train.columns)
+# create features
+preprocessor = FeatureExtractor(
+    id_col="id",
+    date_col="date",
+    date_frequency="day",
+    target_col="sales",
+    target_encodings=[
+        {
+            "partition_cols": ["item_id", "store_id"],
+            "windows": [7, 14, 28],
+            "lags": [7, 14, 21, 28],
+            "functions": ["mean"],
+        },
+        {
+            "partition_cols": ["item_id", "store_id"],
+            "windows": [1],
+            "lags": [7, 8, 9, 14, 15, 16, 21, 22, 23, 28, 29, 30],
+            "functions": ["mean"],
+        },
+    ],
+    date_features=[
+        "day_of_month",
+        "day_of_week",
+        "week_of_year",
+        "quarter",
+        "month",
+        "year",
+    ],
+    history_lengths=["item_id", ["item_id", "store_id"]],
+    encode_events={
+        "cols": ["christmas"],
+        "window": 15,
+    },
+    count_consecutive_values={"value": 0, "lags": [7, 14, 21, 28]},
+)
+df_preprocessed = preprocessor.transform(df)
 
-# define optuna hyperparmeter space
-def hyperparam_space_fn(trial):
-    return {
-        "learning_rate": trial.suggest_float("learning_rate", 0.2, 0.3),
-        "num_leaves": trial.suggest_int("num_leaves", 30, 40),
-    }
-
+# split train and test
+df_train = df.filter(F.col("date") <= "2016-05-22")
+df_test = df.filter(F.col("date") > "2016-05-22")
 
 # initialize meta model
 model = MetaModel(
@@ -45,7 +77,10 @@ model = MetaModel(
     cv_step_length=28,  # number of dates between each cv folds
     max_hyperparam_evals=1,  # total number of optuna trials
     scoring="neg_mean_squared_error",  # sklearn scoring metric
-    hyperparam_space_fn=hyperparam_space_fn,  # optuna hyperparameter space
+    # optuna hyperparameter space
+    hyperparam_space_fn=lambda trial: {
+        "num_leaves": trial.suggest_int("num_leaves", 20, 30)
+    },
     # mlflow parameters
     tracking_uri="./mlruns",  # Mlflow tracking URI
 )
@@ -60,5 +95,4 @@ loaded_model = mlflow.pyfunc.load_model(f"runs:/{model.run_id}/meta_model")
 
 # make predicttions, call an action such as collect or write
 loaded_model.predict(df_test).write.parquet("forecast.parquet")
-
 # %%
