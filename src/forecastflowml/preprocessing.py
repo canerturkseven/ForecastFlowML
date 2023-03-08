@@ -1,7 +1,7 @@
 import itertools
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
-from pyspark.ml import Transformer, Estimator, Model
+from pyspark.ml import Transformer, Estimator, Model, Pipeline
 from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark import keyword_only
 
@@ -35,7 +35,6 @@ class HistoryLength(Estimator):
     @keyword_only
     def __init__(
         self,
-        *,
         idCol=None,
         partitionCols=None,
         dateCol=None,
@@ -250,7 +249,6 @@ class LagWindowSummarizer(Estimator):
     @keyword_only
     def __init__(
         self,
-        *,
         idCol=None,
         targetCol=None,
         dateCol=None,
@@ -509,7 +507,6 @@ class TriangleEventEncoder(Estimator):
     @keyword_only
     def __init__(
         self,
-        *,
         idCol=None,
         eventCols=None,
         dateCol=None,
@@ -683,7 +680,7 @@ class TriangleEventEncoderModel(Model):
         if data_frequency == "month":
             return F.months_between(first_date, second_date)
 
-    def transform(self, df):
+    def _transform(self, df):
         id_col = self.getIdCol()
         date_col = self.getDateCol()
         event_cols = self.getEventCols()
@@ -796,7 +793,6 @@ class CountConsecutiveValues(Estimator):
     @keyword_only
     def __init__(
         self,
-        *,
         idCol=None,
         valueCol=None,
         dateCol=None,
@@ -961,7 +957,7 @@ class CountConsecutiveValuesModel(Model):
     def setLags(self, lags):
         return self.setParams(lags=lags)
 
-    def transform(self, df):
+    def _transform(self, df):
         id_col = self.getIdCol()
         value_col = self.getValueCol()
         date_col = self.getDateCol()
@@ -989,8 +985,10 @@ class CountConsecutiveValuesModel(Model):
             .orderBy(date_col)
             .rowsBetween(Window.unboundedPreceding, 0)
         )
-        w2 = Window.partitionBy(id_col, "value_group").orderBy(date_col).rowsBetween(
-            Window.unboundedPreceding, 0
+        w2 = (
+            Window.partitionBy(id_col, "value_group")
+            .orderBy(date_col)
+            .rowsBetween(Window.unboundedPreceding, 0)
         )
         w3 = Window.partitionBy(id_col).orderBy(date_col)
         for lag in lags:
@@ -1030,16 +1028,15 @@ class DateFeatures(Transformer):
         "year",
     ]
 
-
     @keyword_only
-    def __init__(self, *, dateCol=None, features=None):
+    def __init__(self, dateCol=None, features=None):
         super().__init__()
         self._setDefault(features=None)
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
 
     @keyword_only
-    def setParams(self, *, dateCol=None, features=None):
+    def setParams(self, dateCol=None, features=None):
         kwargs = self._input_kwargs
         return self._set(**kwargs)
 
@@ -1083,3 +1080,108 @@ class DateFeatures(Transformer):
             if feature == "year":
                 df = df.withColumn("year", F.year(F.col(date_col)))
         return df
+
+
+class LocalCheckpointer(Transformer):
+    eager = Param(
+        Params._dummy(),
+        "eager",
+        "eager",
+        typeConverter=TypeConverters.toBoolean,
+    )
+
+    @keyword_only
+    def __init__(self, eager=None):
+        super().__init__()
+        self._setDefault(eager=True)
+        kwargs = self._input_kwargs
+        self.setParams(**kwargs)
+
+    @keyword_only
+    def setParams(self, eager=None):
+        kwargs = self._input_kwargs
+        return self._set(**kwargs)
+
+    def setEager(self, eager):
+        return self.setParams(eager=eager)
+
+    def getEager(self):
+        return self.getOrDefault(self.eager)
+
+    def _transform(self, df):
+        return df.localCheckpoint(eager=self.getEager())
+
+
+class FeatureExtractor:
+    def __init__(
+        self,
+        id_col,
+        date_col,
+        date_frequency,
+        target_col,
+        target_encodings,
+        date_features,
+        history_lengths,
+        encode_events,
+        count_consecutive_values,
+    ):
+        self.id_col = id_col
+        self.date_col = date_col
+        self.date_frequency = date_frequency
+        self.target_col = target_col
+        self.target_encodings = target_encodings
+        self.date_features = date_features
+        self.history_lengths = history_lengths
+        self.encode_events = encode_events
+        self.count_consecutive_values = count_consecutive_values
+
+    def transform(self, df):
+        stages = []
+        if self.history_lengths:
+            stages.append(
+                HistoryLength(
+                    idCol=self.id_col,
+                    partitionCols=self.history_lengths,
+                    dateCol=self.date_col,
+                    dateFrequency=self.date_frequency,
+                )
+            )
+        if self.encode_events:
+            stages.append(
+                TriangleEventEncoder(
+                    idCol=self.id_col,
+                    dateCol=self.date_col,
+                    dateFrequency=self.date_frequency,
+                    eventCols=self.encode_events["cols"],
+                    window=self.encode_events["window"],
+                )
+            )
+        if self.count_consecutive_values:
+            stages.append(
+                CountConsecutiveValues(
+                    idCol=self.id_col,
+                    valueCol=self.target_col,
+                    dateCol=self.date_col,
+                    value=self.count_consecutive_values["value"],
+                    lags=self.count_consecutive_values["lags"],
+                )
+            )
+        if self.date_features:
+            stages.append(
+                DateFeatures(
+                    dateCol=self.date_col,
+                    features=self.date_features,
+                )
+            )
+        if self.target_encodings:
+            stages.append(
+                LagWindowSummarizer(
+                    idCol=self.id_col,
+                    targetCol=self.target_col,
+                    dateCol=self.date_col,
+                    dateFrequency=self.date_frequency,
+                    features=self.target_encodings,
+                )
+            )
+        pipeline = Pipeline(stages=stages)
+        return pipeline.fit(df).transform(df)
