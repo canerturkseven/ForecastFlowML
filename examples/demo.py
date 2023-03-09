@@ -20,7 +20,7 @@ spark = (
 # load sample dataset
 df = load_walmart_m5(spark)
 
-# create features
+# initialize feature extractor model
 preprocessor = FeatureExtractor(
     id_col="id",
     date_col="date",
@@ -55,9 +55,10 @@ preprocessor = FeatureExtractor(
     },
     count_consecutive_values={"value": 0, "lags": [7, 14, 21, 28]},
 )
+# checkpoint dataframe to save intermediate results
 df_preprocessed = preprocessor.transform(df).localCheckpoint()
 
-# split train and test
+# split dataset into train and test
 df_train = df_preprocessed.filter(F.col("date") <= "2016-05-22")
 df_test = df_preprocessed.filter(F.col("date") > "2016-05-22")
 
@@ -95,4 +96,3 @@ loaded_model = mlflow.pyfunc.load_model(f"runs:/{model.run_id}/meta_model")
 
 # make predictions and save the results
 loaded_model.predict(df_test).write.parquet("forecast.parquet")
-# %%
