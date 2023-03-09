@@ -9,10 +9,11 @@ import pyspark.sql.functions as F
 
 # create spark environment
 spark = (
-    SparkSession.builder.master("local[*]")
+    SparkSession.builder.master("local[4]")
     .config("spark.driver.memory", "16g")
     .config("spark.sql.execution.arrow.enabled", "true")
     .config("spark.sql.adaptive.enabled", "false")
+    .config("spark.sql.shuffle.partitions", "4")
     .getOrCreate()
 )
 
@@ -54,11 +55,11 @@ preprocessor = FeatureExtractor(
     },
     count_consecutive_values={"value": 0, "lags": [7, 14, 21, 28]},
 )
-df_preprocessed = preprocessor.transform(df)
+df_preprocessed = preprocessor.transform(df).localCheckpoint()
 
 # split train and test
-df_train = df.filter(F.col("date") <= "2016-05-22")
-df_test = df.filter(F.col("date") > "2016-05-22")
+df_train = df_preprocessed.filter(F.col("date") <= "2016-05-22")
+df_test = df_preprocessed.filter(F.col("date") > "2016-05-22")
 
 # initialize meta model
 model = MetaModel(
@@ -73,7 +74,7 @@ model = MetaModel(
     max_forecast_horizon=28,  # total forecast horizon
     lag_feature_range=2,  #
     # cross validation and optimisation parameters
-    n_cv_splits=1,  # number of time-based cv splits
+    n_cv_splits=5,  # number of time-based cv splits
     cv_step_length=28,  # number of dates between each cv folds
     max_hyperparam_evals=1,  # total number of optuna trials
     scoring="neg_mean_squared_error",  # sklearn scoring metric
@@ -85,7 +86,6 @@ model = MetaModel(
     tracking_uri="./mlruns",  # Mlflow tracking URI
 )
 
-
 # launch mlflow server using command "mlflow ui" and train the model
 # examine the training progress on mlflow platform
 model.train(df_train)
@@ -93,6 +93,6 @@ model.train(df_train)
 # load meta model as mlflow.pyfunc
 loaded_model = mlflow.pyfunc.load_model(f"runs:/{model.run_id}/meta_model")
 
-# make predicttions, call an action such as collect or write
+# make predictions and save the results
 loaded_model.predict(df_test).write.parquet("forecast.parquet")
 # %%
