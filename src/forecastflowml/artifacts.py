@@ -31,7 +31,7 @@ class Artifact:
     def log_train_data(self):
         tempdir = tempfile.mkdtemp()
         try:
-            filepath = os.path.join(tempdir, f"{self.horizon_id}.parquet")
+            filepath = os.path.join(tempdir, f"horizon_{self.horizon_id}.parquet")
             self.df_train.to_parquet(filepath)
             mlflow.log_artifact(filepath, "train_data")
         finally:
@@ -41,7 +41,7 @@ class Artifact:
         signature = infer_signature(self.df_train[self.model.feature_name_])
         mlflow.lightgbm.log_model(
             lgb_model=self.model,
-            artifact_path=f"models/{self.horizon_id}",
+            artifact_path=f"models/horizon_{self.horizon_id}",
             signature=signature,
         )
 
@@ -55,7 +55,7 @@ class Artifact:
         graph = px.bar(df_importance, y="feature", x="importance", orientation="h")
         tempdir = tempfile.mkdtemp()
         try:
-            filepath = os.path.join(tempdir, f"{self.horizon_id}.html")
+            filepath = os.path.join(tempdir, f"horizon_{self.horizon_id}.html")
             graph.write_html(filepath)
             mlflow.log_artifact(filepath, "feature_importance")
         finally:
@@ -70,7 +70,7 @@ class Artifact:
             tempdir = tempfile.mkdtemp()
             try:
                 graph = func(self.study)
-                filepath = os.path.join(tempdir, f"{self.horizon_id}.html")
+                filepath = os.path.join(tempdir, f"horizon_{self.horizon_id}.html")
                 graph.write_html(filepath)
                 mlflow.log_artifact(filepath, f"optimisation_visualization/{folder}")
             except:
@@ -81,7 +81,7 @@ class Artifact:
     def log_cv_forecast(self):
         tempdir = tempfile.mkdtemp()
         try:
-            filepath = os.path.join(tempdir, f"{self.horizon_id}.parquet")
+            filepath = os.path.join(tempdir, f"horizon_{self.horizon_id}.parquet")
             self.cv_forecast.to_parquet(filepath)
             mlflow.log_artifact(filepath, "cv_forecast")
         finally:
