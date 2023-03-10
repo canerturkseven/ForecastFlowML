@@ -123,6 +123,17 @@ class MetaModel(mlflow.pyfunc.PythonModel):
             forecast_list.append(cv_forecast)
         return functools.reduce(DataFrame.unionByName, forecast_list)
 
+    @property
+    def cv_forecast_graph(self):
+        graph_dict = {}
+        for group_name, run_id in self.group_run_ids.items():
+            path = mlflow.artifacts.download_artifacts(
+                run_id=run_id, artifact_path="cv_forecast_graph"
+            )
+            graph = plotly.io.read_json(os.path.join(path, f"cv_forecast_graph.json"))
+            graph_dict[group_name] = graph
+        return graph_dict
+
     def _filter_horizon(self, df, forecast_horizon):
         dates = df[self.date_col].sort_values().unique()
         forecast_dates = dates[[fh - 1 for fh in forecast_horizon]]
@@ -256,8 +267,6 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         )
         evaluator.log_metric()
         evaluator.log_forecast_graph()
-
-
 
     def predict(self, context, model_input):
         tracking_uri = self.tracking_uri
