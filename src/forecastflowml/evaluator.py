@@ -55,8 +55,11 @@ class Evaluator:
                 )
                 tempdir = tempfile.mkdtemp()
                 try:
-                    filepath = os.path.join(tempdir, "cv_forecast_graph.html")
-                    graph.write_html(filepath)
-                    mlflow.log_artifact(filepath)
+                    html_path = os.path.join(tempdir, "cv_forecast_graph.html")
+                    json_path = os.path.join(tempdir, "cv_forecast_graph.json")
+                    graph.write_html(html_path)
+                    graph.write_json(json_path)
+                    mlflow.log_artifact(html_path, "cv_forecast_graph")
+                    mlflow.log_artifact(json_path, "cv_forecast_graph")
                 finally:
                     shutil.rmtree(tempdir)

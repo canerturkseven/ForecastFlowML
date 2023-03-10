@@ -55,9 +55,12 @@ class Artifact:
         graph = px.bar(df_importance, y="feature", x="importance", orientation="h")
         tempdir = tempfile.mkdtemp()
         try:
-            filepath = os.path.join(tempdir, f"horizon_{self.horizon_id}.html")
-            graph.write_html(filepath)
-            mlflow.log_artifact(filepath, "feature_importance")
+            html_path = os.path.join(tempdir, f"horizon_{self.horizon_id}.html")
+            json_path = os.path.join(tempdir, f"horizon_{self.horizon_id}.json")
+            graph.write_html(html_path)
+            graph.write_json(json_path)
+            mlflow.log_artifact(html_path, "feature_importance")
+            mlflow.log_artifact(json_path, "feature_importance")
         finally:
             shutil.rmtree(tempdir)
 
@@ -70,9 +73,12 @@ class Artifact:
             tempdir = tempfile.mkdtemp()
             try:
                 graph = func(self.study)
-                filepath = os.path.join(tempdir, f"horizon_{self.horizon_id}.html")
-                graph.write_html(filepath)
-                mlflow.log_artifact(filepath, f"optimisation_visualization/{folder}")
+                html_path = os.path.join(tempdir, f"horizon_{self.horizon_id}.html")
+                json_path = os.path.join(tempdir, f"horizon_{self.horizon_id}.json")
+                graph.write_html(html_path)
+                graph.write_json(json_path)
+                mlflow.log_artifact(html_path, f"optimisation_visualization/{folder}")
+                mlflow.log_artifact(json_path, f"optimisation_visualization/{folder}")
             except:
                 pass
             finally:

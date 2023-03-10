@@ -1,8 +1,11 @@
 import mlflow
 import re
-
+import os
+import functools
+import plotly
 import pandas as pd
 import pyspark.sql.functions as F
+from pyspark.sql import SparkSession, DataFrame
 from forecastflowml.optimizer import Optimizer
 from forecastflowml.evaluator import Evaluator
 
@@ -43,7 +46,82 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         self.scoring = scoring
         self.hyperparam_space_fn = hyperparam_space_fn
         self.n_jobs = n_jobs
+        self.n_horizon = max_forecast_horizon // model_horizon
         mlflow.set_tracking_uri(tracking_uri)
+
+    @property
+    def n_horizon(self):
+        return self._n_horizon
+
+    @n_horizon.setter
+    def n_horizon(self, value):
+        self._n_horizon = value
+
+    @property
+    def estimators(self):
+        est_dict = {}
+        for group_name, run_id in self.group_run_ids.items():
+            group_dict = {}
+            for i in range(self.n_horizon):
+                model_path = f"runs:/{run_id}/models/horizon_{i}"
+                model = mlflow.lightgbm.load_model(model_path)
+                group_dict[f"horizon_{i}"] = model
+            est_dict[group_name] = group_dict
+        return est_dict
+
+    @property
+    def features(self):
+        feature_dict = {}
+        for group_name, run_id in self.group_run_ids.items():
+            group_dict = {}
+            for i in range(self.n_horizon):
+                model_path = f"runs:/{run_id}/models/horizon_{i}"
+                model_info = mlflow.models.get_model_info(model_path)
+                features = model_info.signature.inputs.input_names()
+                group_dict[f"horizon_{i}"] = features
+            feature_dict[group_name] = group_dict
+        return feature_dict
+
+    @property
+    def feature_importance(self):
+        importance_dict = {}
+        for group_name, run_id in self.group_run_ids.items():
+            group_dict = {}
+            for i in range(self.n_horizon):
+                path = mlflow.artifacts.download_artifacts(
+                    run_id=run_id, artifact_path="feature_importance"
+                )
+                graph = plotly.io.read_json(os.path.join(path, f"horizon_{i}.json"))
+                data = graph.data[0]
+                group_dict[f"horizon_{i}"] = list(zip(data.y, data.x))
+            importance_dict[group_name] = group_dict
+        return importance_dict
+
+    @property
+    def feature_importance_graphs(self):
+        graph_dict = {}
+        for group_name, run_id in self.group_run_ids.items():
+            group_dict = {}
+            for i in range(self.n_horizon):
+                path = mlflow.artifacts.download_artifacts(
+                    run_id=run_id, artifact_path="feature_importance"
+                )
+                graph = plotly.io.read_json(os.path.join(path, f"horizon_{i}.json"))
+                group_dict[f"horizon_{i}"] = graph
+            graph_dict[group_name] = group_dict
+        return graph_dict
+
+    @property
+    def cv_forecast(self):
+        forecast_list = []
+        for run_id in self.group_run_ids.values():
+            path = mlflow.artifacts.download_artifacts(
+                run_id=run_id, artifact_path="cv_forecast"
+            )
+            spark = SparkSession.builder.getOrCreate()
+            cv_forecast = spark.read.parquet(path)
+            forecast_list.append(cv_forecast)
+        return functools.reduce(DataFrame.unionByName, forecast_list)
 
     def _filter_horizon(self, df, forecast_horizon):
         dates = df[self.date_col].sort_values().unique()
@@ -111,7 +189,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         date_col = self.date_col
         target_col = self.target_col
         max_forecast_horizon = self.max_forecast_horizon
-        model_horizon = self.model_horizon
+        n_horizon = self.n_horizon
         date_frequency = self.date_frequency
         scoring = self.scoring
         max_hyperparam_evals = self.max_hyperparam_evals
@@ -122,7 +200,6 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         cv_step_length = self.cv_step_length
         n_jobs = self.n_jobs
         group_run_ids = self._create_runs(df)
-        n_horizon = max_forecast_horizon // model_horizon
 
         @F.pandas_udf(
             "group_name string, horizon_id int, status string",
@@ -180,13 +257,15 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         evaluator.log_metric()
         evaluator.log_forecast_graph()
 
+
+
     def predict(self, context, model_input):
         tracking_uri = self.tracking_uri
         group_col = self.group_col
         parent_run_id = self.run_id
         id_cols = self.id_cols
         date_col = self.date_col
-        n_horizon = self.max_forecast_horizon // self.model_horizon
+        n_horizon = self.n_horizon
         schema = ", ".join(
             [
                 *[f"`{col}` string" for col in self.id_cols],
@@ -208,7 +287,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
             )
             run_id = mlflow.search_runs(filter_string=filter_string)["run_id"].iloc[0]
             horizon_id = df["horizon_id"].iloc[0]
-            model_uri = f"runs:/{run_id}/models/{horizon_id}"
+            model_uri = f"runs:/{run_id}/models/horizon_{horizon_id}"
 
             model = mlflow.lightgbm.load_model(model_uri)
             model_info = mlflow.models.get_model_info(model_uri)
