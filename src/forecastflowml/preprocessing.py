@@ -6,6 +6,23 @@ from pyspark.ml.param import Param, Params, TypeConverters
 from pyspark import keyword_only
 
 
+class FitTransformPipeline(Pipeline):
+    def fit_transform(self, dataset):
+        stages = self.getStages()
+        for stage in stages:
+            if not (isinstance(stage, Estimator) or isinstance(stage, Transformer)):
+                raise TypeError(
+                    "Cannot recognize a pipeline stage of type %s." % type(stage)
+                )
+        for stage in stages:
+            if isinstance(stage, Transformer):
+                dataset = stage.transform(dataset)
+            else:  # must be an Estimator
+                model = stage.fit(dataset)
+                dataset = model.transform(dataset)
+        return dataset
+
+
 class HistoryLength(Estimator):
     idCol = Param(
         Params._dummy(),
@@ -17,7 +34,6 @@ class HistoryLength(Estimator):
         Params._dummy(),
         "partitionCols",
         "partition columns",
-        typeConverter=TypeConverters.identity,
     )
     dateCol = Param(
         Params._dummy(),
@@ -100,7 +116,6 @@ class HistoryLengthModel(Model):
         Params._dummy(),
         "partitionCols",
         "partition columns",
-        typeConverter=TypeConverters.identity,
     )
     dateCol = Param(
         Params._dummy(),
@@ -118,7 +133,6 @@ class HistoryLengthModel(Model):
         Params._dummy(),
         "df_",
         "dataset from fitting phase",
-        typeConverter=TypeConverters.identity,
     )
 
     @keyword_only
@@ -243,7 +257,6 @@ class LagWindowSummarizer(Estimator):
         Params._dummy(),
         "features",
         "features",
-        typeConverter=TypeConverters.identity,
     )
 
     @keyword_only
@@ -341,13 +354,11 @@ class LagWindowSummarizerModel(Model):
         Params._dummy(),
         "features",
         "features",
-        typeConverter=TypeConverters.identity,
     )
     df_ = Param(
         Params._dummy(),
         "df_",
         "dataset from fitting phase",
-        typeConverter=TypeConverters.identity,
     )
 
     @keyword_only
@@ -605,7 +616,6 @@ class TriangleEventEncoderModel(Model):
         Params._dummy(),
         "df_",
         "dataset from fitting phase",
-        typeConverter=TypeConverters.identity,
     )
 
     @keyword_only
@@ -891,7 +901,6 @@ class CountConsecutiveValuesModel(Model):
         Params._dummy(),
         "df_",
         "dataset from fitting phase",
-        typeConverter=TypeConverters.identity,
     )
 
     @keyword_only
@@ -1137,6 +1146,26 @@ class FeatureExtractor:
 
     def transform(self, df):
         stages = []
+        if self.target_encodings:
+            stages.append(
+                LagWindowSummarizer(
+                    idCol=self.id_col,
+                    targetCol=self.target_col,
+                    dateCol=self.date_col,
+                    dateFrequency=self.date_frequency,
+                    features=self.target_encodings,
+                )
+            )
+        if self.count_consecutive_values:
+            stages.append(
+                CountConsecutiveValues(
+                    idCol=self.id_col,
+                    valueCol=self.target_col,
+                    dateCol=self.date_col,
+                    value=self.count_consecutive_values["value"],
+                    lags=self.count_consecutive_values["lags"],
+                )
+            )
         if self.history_lengths:
             stages.append(
                 HistoryLength(
@@ -1156,16 +1185,6 @@ class FeatureExtractor:
                     window=self.encode_events["window"],
                 )
             )
-        if self.count_consecutive_values:
-            stages.append(
-                CountConsecutiveValues(
-                    idCol=self.id_col,
-                    valueCol=self.target_col,
-                    dateCol=self.date_col,
-                    value=self.count_consecutive_values["value"],
-                    lags=self.count_consecutive_values["lags"],
-                )
-            )
         if self.date_features:
             stages.append(
                 DateFeatures(
@@ -1173,15 +1192,5 @@ class FeatureExtractor:
                     features=self.date_features,
                 )
             )
-        if self.target_encodings:
-            stages.append(
-                LagWindowSummarizer(
-                    idCol=self.id_col,
-                    targetCol=self.target_col,
-                    dateCol=self.date_col,
-                    dateFrequency=self.date_frequency,
-                    features=self.target_encodings,
-                )
-            )
-        pipeline = Pipeline(stages=stages)
-        return pipeline.fit(df).transform(df)
+        pipeline = FitTransformPipeline(stages=stages)
+        return pipeline.fit_transform(df)
