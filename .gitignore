@@ -1,5 +1,4 @@
 *.sqlite
-*.html
 mlruns/
 __pycache__
 dist/
