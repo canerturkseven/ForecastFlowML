@@ -6,6 +6,7 @@ from forecastflowml.preprocessing import FeatureExtractor
 from forecastflowml.data.loader import load_walmart_m5
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
+from pyspark.ml import Pipeline
 
 # create spark environment
 spark = (
@@ -19,6 +20,7 @@ spark = (
 
 # load sample dataset
 df = load_walmart_m5(spark)
+df.show()
 
 # initialize feature extractor model
 preprocessor = FeatureExtractor(
@@ -31,7 +33,7 @@ preprocessor = FeatureExtractor(
             "partition_cols": ["item_id", "store_id"],
             "windows": [7, 14, 28],
             "lags": [7, 14, 21, 28],
-            "functions": ["mean"],
+            "functions": ["mean", "std"],
         },
         {
             "partition_cols": ["item_id", "store_id"],
@@ -57,6 +59,7 @@ preprocessor = FeatureExtractor(
 )
 # checkpoint dataframe to save intermediate results
 df_preprocessed = preprocessor.transform(df).localCheckpoint()
+df_preprocessed.show()
 
 # split dataset into train and test
 df_train = df_preprocessed.filter(F.col("date") <= "2016-05-22")
@@ -73,7 +76,7 @@ model = MetaModel(
     # model parameters
     model_horizon=7,  # horizon per model
     max_forecast_horizon=28,  # total forecast horizon
-    lag_feature_range=2,  #
+    lag_feature_range=2,  # extra lags to include as features based on model horizon
     # cross validation and optimisation parameters
     n_cv_splits=5,  # number of time-based cv splits
     cv_step_length=28,  # number of dates between each cv folds
@@ -94,5 +97,7 @@ model.train(df_train)
 # load meta model as mlflow.pyfunc
 loaded_model = mlflow.pyfunc.load_model(f"runs:/{model.run_id}/meta_model")
 
-# make predictions and save the results
-loaded_model.predict(df_test).write.parquet("forecast.parquet")
+# make predictions
+loaded_model.predict(df_test).show()
+
+# %%
