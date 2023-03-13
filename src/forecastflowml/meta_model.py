@@ -268,7 +268,13 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         evaluator.log_metric()
         evaluator.log_forecast_graph()
 
-    def predict(self, context, model_input):
+
+    def predict(self, df):
+        loaded_model = mlflow.pyfunc.load_model(f"runs:/{self.run_id}/meta_model")
+        return loaded_model.predict(df)
+
+
+    def _predict(self, context, model_input):
         tracking_uri = self.tracking_uri
         group_col = self.group_col
         parent_run_id = self.run_id
