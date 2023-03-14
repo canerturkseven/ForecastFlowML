@@ -24,7 +24,6 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         max_hyperparam_evals=1,
         n_cv_splits=1,
         scoring="neg_mean_squared_error",
-        tracking_uri="./mlruns",
         lag_feature_range=0,
         n_jobs=1,
         cv_step_length=None,
@@ -40,14 +39,12 @@ class MetaModel(mlflow.pyfunc.PythonModel):
             cv_step_length if cv_step_length is not None else max_forecast_horizon
         )
         self.model_horizon = model_horizon
-        self.tracking_uri = tracking_uri
         self.lag_feature_range = lag_feature_range
         self.max_hyperparam_evals = max_hyperparam_evals
         self.scoring = scoring
         self.hyperparam_space_fn = hyperparam_space_fn
         self.n_jobs = n_jobs
         self.n_horizon = max_forecast_horizon // model_horizon
-        mlflow.set_tracking_uri(tracking_uri)
 
     @property
     def n_horizon(self):
@@ -207,7 +204,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         n_cv_splits = self.n_cv_splits
         hyperparam_space_fn = self.hyperparam_space_fn
         group_col = self.group_col
-        tracking_uri = self.tracking_uri
+        tracking_uri = mlflow.get_tracking_uri()
         cv_step_length = self.cv_step_length
         n_jobs = self.n_jobs
         group_run_ids = self._create_runs(df)
@@ -268,14 +265,8 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         evaluator.log_metric()
         evaluator.log_forecast_graph()
 
-
-    def predict(self, df):
-        loaded_model = mlflow.pyfunc.load_model(f"runs:/{self.run_id}/meta_model")
-        return loaded_model.predict(df)
-
-
-    def _predict(self, context, model_input):
-        tracking_uri = self.tracking_uri
+    def predict(self, context, model_input):
+        tracking_uri = mlflow.get_tracking_uri()
         group_col = self.group_col
         parent_run_id = self.run_id
         id_cols = self.id_cols
