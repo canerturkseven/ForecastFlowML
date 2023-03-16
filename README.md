@@ -23,10 +23,9 @@ pip install "git+https://github.com/canerturkseven/forecastflowml"
 ForecastFlowML - Scaleable ML Time Series Forecasting with PySpark and Scikit-learn.
 ![system_demo](examples/complete_walkthrough.html)
 
-## Usage
+## Documentation
 
-The following demonstrates how the framework can be used to build forecasting models using a sample of the Kaggle Walmart M5 Competition dataset.
-The sample Databricks notebook can be found [here](https://databricks-prod-cloudfront.cloud.databricks.com/public/4027ec902e239c93eaaa8714f173bcfc/4349737113065041/2597536912577418/4874423725279136/latest.html). You can also run locally using the [script](https://github.com/canerturkseven/ForecastFlowML/blob/master/examples/demo.py).
+Reach to our lates documentation [here](https://forecastflowml.readthedocs.io/en/latest/)
 
 ### Spark
 
