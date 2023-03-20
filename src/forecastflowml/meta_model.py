@@ -7,7 +7,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession, DataFrame
 from forecastflowml.optimizer import Optimizer
-from forecastflowml.evaluator import Evaluator
+from forecastflowml.artifacts import log_metric, log_cv_forecast_graph
 
 
 class MetaModel(mlflow.pyfunc.PythonModel):
@@ -23,7 +23,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         hyperparam_space_fn,
         max_hyperparam_evals=1,
         n_cv_splits=1,
-        scoring="neg_mean_squared_error",
+        scoring_metric="neg_mean_squared_error",
         lag_feature_range=0,
         n_jobs=1,
         cv_step_length=None,
@@ -41,7 +41,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         self.model_horizon = model_horizon
         self.lag_feature_range = lag_feature_range
         self.max_hyperparam_evals = max_hyperparam_evals
-        self.scoring = scoring
+        self.scoring_metric = scoring_metric
         self.hyperparam_space_fn = hyperparam_space_fn
         self.n_jobs = n_jobs
         self.n_horizon = max_forecast_horizon // model_horizon
@@ -199,7 +199,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         max_forecast_horizon = self.max_forecast_horizon
         n_horizon = self.n_horizon
         date_frequency = self.date_frequency
-        scoring = self.scoring
+        scoring_metric = self.scoring_metric
         max_hyperparam_evals = self.max_hyperparam_evals
         n_cv_splits = self.n_cv_splits
         hyperparam_space_fn = self.hyperparam_space_fn
@@ -226,6 +226,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
                 features = self._filter_features(df, forecast_horizon)
 
                 optimizer = Optimizer(
+                    group_name=df[group_col].iloc[0],
                     id_cols=id_cols,
                     date_col=date_col,
                     target_col=target_col,
@@ -236,7 +237,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
                     hyperparam_space_fn=hyperparam_space_fn,
                     date_frequency=date_frequency,
                     n_cv_splits=n_cv_splits,
-                    scoring=scoring,
+                    scoring_metric=scoring_metric,
                     max_hyperparam_evals=max_hyperparam_evals,
                     n_jobs=n_jobs,
                 )
@@ -255,15 +256,8 @@ class MetaModel(mlflow.pyfunc.PythonModel):
             .apply(train_udf)
             .collect()
         )
-        evaluator = Evaluator(
-            group_run_ids=group_run_ids,
-            id_cols=id_cols,
-            date_col=date_col,
-            target_col=target_col,
-            scoring=scoring,
-        )
-        evaluator.log_metric()
-        evaluator.log_forecast_graph()
+        log_metric(group_run_ids, target_col, scoring_metric)
+        log_cv_forecast_graph(group_run_ids, id_cols, target_col, date_col)
 
     def predict(self, context, model_input):
         tracking_uri = mlflow.get_tracking_uri()
