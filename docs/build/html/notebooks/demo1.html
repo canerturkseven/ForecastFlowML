@@ -1,0 +1,670 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="asdasd" href="demo2.html" /><link rel="prev" title="Tutorials" href="../tutorials.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
+        <title>Distributed Models Over Distributed Data - ForecastFlowML 0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">ForecastFlowML 0.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  
+  <span class="sidebar-brand-text">ForecastFlowML 0.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">My Title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage2.html">My Title2</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Distributed Models Over Distributed Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demo2.html">asdasd</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api_reference.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../feature_extractor.html">Feature Extractor</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../meta_model.html">Meta Model</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="simple">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="Distributed-Models-Over-Distributed-Data">
+<h1>Distributed Models Over Distributed Data<a class="headerlink" href="#Distributed-Models-Over-Distributed-Data" title="Permalink to this heading">#</a></h1>
+<p>As a data scientist, image a scenario that you need to develop a machine learning algorithm to predict over 1,000,000 time series. If your dataset has high frequency and long history, then it is probably not going to fit into your machine’s memory. However, you also know that your dataset contitutes from groups (stores, items, sensors etc.) and you know that each of these slices are small enough to fit into your machine’s memory. In this case, it would be preferable to slice your dataset by
+groups and create an individual ML model. This would also allow you to parallelize the model training and inference process. Moreover, you will be still using your loved Python based ML algorithms but in a much scaleable way. This approach also contribute to decreasing the run times and increase your experimentation speed.</p>
+<p>ForecastFlowML is a Python library that aims to help data scientists with: - Creating training/inference workflow in an embarrassingly parallel way thanks to PySpark. - Enabling using your favorite libraries such as Scikit-learn, XGBoost and LightGBM. - Developing an individual model per group. - Providing PySpark based time series feature extraction tool. - Building a seperate model to predict each forecast horizon. - Time-based cross validation. - Bayesian hyperparameter optimisation. - Model
+registry, artifact management and experiment tracking using MLflow.</p>
+<p>In this tutorial, we are going to demonstrate the ForecastFlowML capabilities using a subset of the Kaggle M5 Forecasting (<a class="reference external" href="https://www.kaggle.com/c/m5-forecasting-accuracy">https://www.kaggle.com/c/m5-forecasting-accuracy</a>) dataset.</p>
+<section id="Requirements">
+<h2>Requirements<a class="headerlink" href="#Requirements" title="Permalink to this heading">#</a></h2>
+<p>In order to follow the tutorial, you need to install the <code class="docutils literal notranslate"><span class="pre">ForecastFlowML</span></code>. If not, please check the installation guideline.</p>
+</section>
+<section id="Import-packages">
+<h2>Import packages<a class="headerlink" href="#Import-packages" title="Permalink to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">forecastflowml.meta_model</span> <span class="kn">import</span> <span class="n">MetaModel</span>
+<span class="kn">from</span> <span class="nn">forecastflowml.preprocessing</span> <span class="kn">import</span> <span class="n">FeatureExtractor</span>
+<span class="kn">from</span> <span class="nn">forecastflowml.data.loader</span> <span class="kn">import</span> <span class="n">load_walmart_m5</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql</span> <span class="kn">import</span> <span class="n">SparkSession</span>
+<span class="kn">import</span> <span class="nn">pyspark.sql.functions</span> <span class="k">as</span> <span class="nn">F</span>
+<span class="kn">import</span> <span class="nn">plotly.io</span> <span class="k">as</span> <span class="nn">pio</span>
+<span class="n">pio</span><span class="o">.</span><span class="n">renderers</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="s2">&quot;jupyterlab&quot;</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Initialize-Spark">
+<h2>Initialize Spark<a class="headerlink" href="#Initialize-Spark" title="Permalink to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">spark</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">SparkSession</span><span class="o">.</span><span class="n">builder</span><span class="o">.</span><span class="n">master</span><span class="p">(</span><span class="s2">&quot;local[*]&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.sql.execution.arrow.enabled&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.driver.memory&quot;</span><span class="p">,</span> <span class="s2">&quot;8g&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.sql.adaptive.enabled&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">config</span><span class="p">(</span><span class="s2">&quot;spark.sql.shuffle.partitions&quot;</span><span class="p">,</span> <span class="s2">&quot;4&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">getOrCreate</span><span class="p">()</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Load-sample-dataset-from-package">
+<h2>Load sample dataset from package<a class="headerlink" href="#Load-sample-dataset-from-package" title="Permalink to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">load_walmart_m5</span><span class="p">(</span><span class="n">spark</span><span class="p">)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
++--------------------+-----------+-------+------+--------+--------+-----+----------+---------+
+|                  id|    item_id|dept_id|cat_id|store_id|state_id|sales|      date|christmas|
++--------------------+-----------+-------+------+--------+--------+-----+----------+---------+
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  2.0|2011-01-29|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  5.0|2011-01-30|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  3.0|2011-01-31|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-01|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-02|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-03|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-04|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  1.0|2011-02-05|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-06|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  3.0|2011-02-07|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-08|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  3.0|2011-02-09|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  1.0|2011-02-10|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  1.0|2011-02-11|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  1.0|2011-02-12|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  6.0|2011-02-13|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  4.0|2011-02-14|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-15|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-16|        0|
+|FOODS_1_013_TX_2_...|FOODS_1_013|FOODS_1| FOODS|    TX_2|      TX|  0.0|2011-02-17|        0|
++--------------------+-----------+-------+------+--------+--------+-----+----------+---------+
+only showing top 20 rows
+
+</pre></div></div>
+</div>
+</section>
+<section id="Feature-Engineering">
+<h2>Feature Engineering<a class="headerlink" href="#Feature-Engineering" title="Permalink to this heading">#</a></h2>
+<section id="Create-feature-extractor-model">
+<h3>Create feature extractor model<a class="headerlink" href="#Create-feature-extractor-model" title="Permalink to this heading">#</a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">preprocessor</span> <span class="o">=</span> <span class="n">FeatureExtractor</span><span class="p">(</span>
+    <span class="n">id_col</span><span class="o">=</span><span class="s2">&quot;id&quot;</span><span class="p">,</span>
+    <span class="n">date_col</span><span class="o">=</span><span class="s2">&quot;date&quot;</span><span class="p">,</span>
+    <span class="n">date_frequency</span><span class="o">=</span><span class="s2">&quot;day&quot;</span><span class="p">,</span>
+    <span class="n">target_col</span><span class="o">=</span><span class="s2">&quot;sales&quot;</span><span class="p">,</span>
+    <span class="n">target_encodings</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;partition_cols&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;store_id&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;windows&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">28</span><span class="p">],</span>
+            <span class="s2">&quot;lags&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">28</span><span class="p">],</span>
+            <span class="s2">&quot;functions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;std&quot;</span><span class="p">],</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;partition_cols&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;store_id&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;windows&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="s2">&quot;lags&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">28</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>
+            <span class="s2">&quot;functions&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">],</span>
+    <span class="n">date_features</span><span class="o">=</span><span class="p">[</span>
+        <span class="s2">&quot;day_of_month&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;day_of_week&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;week_of_year&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;quarter&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;month&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;year&quot;</span><span class="p">,</span>
+    <span class="p">],</span>
+    <span class="n">history_lengths</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;item_id&quot;</span><span class="p">,</span> <span class="s2">&quot;store_id&quot;</span><span class="p">]],</span>
+    <span class="n">encode_events</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;cols&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;christmas&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;window&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">count_consecutive_values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;lags&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">28</span><span class="p">]},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Extract-features-and-checkpoint-dataframe-to-save-intermediate-results">
+<h3>Extract features and checkpoint dataframe to save intermediate results<a class="headerlink" href="#Extract-features-and-checkpoint-dataframe-to-save-intermediate-results" title="Permalink to this heading">#</a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df_preprocessed</span> <span class="o">=</span> <span class="n">preprocessor</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="o">.</span><span class="n">localCheckpoint</span><span class="p">()</span>
+<span class="n">df_preprocessed</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="Training">
+<h2>Training<a class="headerlink" href="#Training" title="Permalink to this heading">#</a></h2>
+<section id="Split-dataset-into-train-and-test">
+<h3>Split dataset into train and test<a class="headerlink" href="#Split-dataset-into-train-and-test" title="Permalink to this heading">#</a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df_train</span> <span class="o">=</span> <span class="n">df_preprocessed</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;date&quot;</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="s2">&quot;2016-05-22&quot;</span><span class="p">)</span>
+<span class="n">df_test</span> <span class="o">=</span> <span class="n">df_preprocessed</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;date&quot;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="s2">&quot;2016-05-22&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="initialize-meta-model">
+<h3>initialize meta model<a class="headerlink" href="#initialize-meta-model" title="Permalink to this heading">#</a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">MetaModel</span><span class="p">(</span>
+
+    <span class="c1"># dataset parameters</span>
+    <span class="n">group_col</span><span class="o">=</span><span class="s2">&quot;cat_id&quot;</span><span class="p">,</span>  <span class="c1"># column to slice dataframe</span>
+    <span class="n">id_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span>  <span class="c1"># columns to use as time series identifier</span>
+    <span class="n">date_col</span><span class="o">=</span><span class="s2">&quot;date&quot;</span><span class="p">,</span>  <span class="c1"># date column</span>
+    <span class="n">target_col</span><span class="o">=</span><span class="s2">&quot;sales&quot;</span><span class="p">,</span>  <span class="c1"># target column</span>
+    <span class="n">date_frequency</span><span class="o">=</span><span class="s2">&quot;days&quot;</span><span class="p">,</span>  <span class="c1"># date frequency (days, weeks, months, years) of dataset</span>
+
+    <span class="c1"># model parameters</span>
+    <span class="n">model_horizon</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>  <span class="c1"># horizon per model</span>
+    <span class="n">max_forecast_horizon</span><span class="o">=</span><span class="mi">28</span><span class="p">,</span>  <span class="c1"># total forecast horizon</span>
+    <span class="n">lag_feature_range</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>  <span class="c1"># extra lags to include as features based on model horizon</span>
+
+    <span class="c1"># cross validation and optimisation parameters</span>
+    <span class="n">n_cv_splits</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># number of time-based cv splits</span>
+    <span class="n">cv_step_length</span><span class="o">=</span><span class="mi">28</span><span class="p">,</span>  <span class="c1"># number of dates between each cv folds</span>
+    <span class="n">max_hyperparam_evals</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># total number of optuna trials</span>
+    <span class="n">scoring</span><span class="o">=</span><span class="s2">&quot;neg_mean_squared_error&quot;</span><span class="p">,</span>  <span class="c1"># sklearn scoring metric</span>
+
+    <span class="c1"># optuna hyperparameter space</span>
+    <span class="n">hyperparam_space_fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">trial</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;num_leaves&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="s2">&quot;num_leaves&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Train-the-model">
+<h3>Train the model<a class="headerlink" href="#Train-the-model" title="Permalink to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">df_train</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2023/03/14 02:14:22 WARNING mlflow.utils.requirements_utils: The following packages were not found in the public PyPI package index as of 2023-02-28; if these packages are not present in the public PyPI index, you must install them manually before loading your model: {&#39;forecastflowml&#39;}
+c:\Users\caner.turkseven\Anaconda3\envs\spark\lib\site-packages\_distutils_hack\__init__.py:30: UserWarning:
+
+Setuptools is replacing distutils.
+
+C:\spark-3.0.0-bin-hadoop3.2\python\pyspark\sql\pandas\group_ops.py:73: UserWarning:
+
+It is preferred to use &#39;applyInPandas&#39; over this API. This API will be deprecated in the future releases. See SPARK-28264 for more details.
+
+</pre></div></div>
+</div>
+</section>
+<section id="Check-your-estimators">
+<h3>Check your estimators<a class="headerlink" href="#Check-your-estimators" title="Permalink to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">estimators</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{&#39;HOUSEHOLD&#39;: {&#39;horizon_0&#39;: LGBMRegressor(num_leaves=26),
+  &#39;horizon_1&#39;: LGBMRegressor(num_leaves=27),
+  &#39;horizon_2&#39;: LGBMRegressor(num_leaves=23),
+  &#39;horizon_3&#39;: LGBMRegressor(num_leaves=23)},
+ &#39;HOBBIES&#39;: {&#39;horizon_0&#39;: LGBMRegressor(num_leaves=29),
+  &#39;horizon_1&#39;: LGBMRegressor(num_leaves=22),
+  &#39;horizon_2&#39;: LGBMRegressor(num_leaves=25),
+  &#39;horizon_3&#39;: LGBMRegressor(num_leaves=21)},
+ &#39;FOODS&#39;: {&#39;horizon_0&#39;: LGBMRegressor(num_leaves=30),
+  &#39;horizon_1&#39;: LGBMRegressor(num_leaves=30),
+  &#39;horizon_2&#39;: LGBMRegressor(num_leaves=22),
+  &#39;horizon_3&#39;: LGBMRegressor(num_leaves=22)}}
+</pre></div></div>
+</div>
+</section>
+<section id="Cross-validation-forecast-results-across-groups">
+<h3>Cross validation forecast results across groups<a class="headerlink" href="#Cross-validation-forecast-results-across-groups" title="Permalink to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">cv_forecast_graph</span><span class="p">[</span><span class="s1">&#39;HOUSEHOLD&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+</section>
+<section id="Feature-importance-graphs-per-group-and-forecat-horizon">
+<h3>Feature importance graphs per group and forecat horizon<a class="headerlink" href="#Feature-importance-graphs-per-group-and-forecat-horizon" title="Permalink to this heading">#</a></h3>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">feature_importance_graphs</span><span class="p">[</span><span class="s1">&#39;HOUSEHOLD&#39;</span><span class="p">][</span><span class="s1">&#39;horizon_1&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+</section>
+<section id="Open-MLflow-UI">
+<h3>Open MLflow UI<a class="headerlink" href="#Open-MLflow-UI" title="Permalink to this heading">#</a></h3>
+<p>You can also see all of the metrics/models/features/cv forecast/optimisation visualisations on the MLFlow UI. - If you are running locally, you can open the MLflow UI by getting into the directory and using the <code class="docutils literal notranslate"><span class="pre">mlflow</span> <span class="pre">ui</span></code> command. - If you are using Databricks Notebooks, you need to open the <code class="docutils literal notranslate"><span class="pre">Experiments</span></code> section from the <code class="docutils literal notranslate"><span class="pre">Machine</span> <span class="pre">Learning</span> <span class="pre">Workspace</span></code>.</p>
+<img alt="title" src="../_images/1.png" />
+</section>
+<section id="Click-on-one-of-the-groups">
+<h3>Click on one of the groups<a class="headerlink" href="#Click-on-one-of-the-groups" title="Permalink to this heading">#</a></h3>
+<img alt="title" src="../_images/2.png" />
+</section>
+<section id="Logged-models-per-forecasting-horizon-and-used-features">
+<h3>Logged models per forecasting horizon and used features<a class="headerlink" href="#Logged-models-per-forecasting-horizon-and-used-features" title="Permalink to this heading">#</a></h3>
+<img alt="title" src="../_images/3.png" />
+</section>
+<section id="Aggregated-cross-validation-forecast-graph-for-all-time-series-in-the-group">
+<h3>Aggregated cross validation forecast graph for all time series in the group<a class="headerlink" href="#Aggregated-cross-validation-forecast-graph-for-all-time-series-in-the-group" title="Permalink to this heading">#</a></h3>
+<img alt="title" src="../_images/4.png" />
+</section>
+<section id="Feature-importance-graph-per-model">
+<h3>Feature importance graph per model<a class="headerlink" href="#Feature-importance-graph-per-model" title="Permalink to this heading">#</a></h3>
+<img alt="title" src="../_images/5.png" />
+</section>
+<section id="Optimisation-Visualisations">
+<h3>Optimisation Visualisations<a class="headerlink" href="#Optimisation-Visualisations" title="Permalink to this heading">#</a></h3>
+<img alt="title" src="../_images/6.png" />
+</section>
+</section>
+<section id="Inference">
+<h2>Inference<a class="headerlink" href="#Inference" title="Permalink to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mlflow</span>
+<span class="n">loaded_model</span> <span class="o">=</span> <span class="n">mlflow</span><span class="o">.</span><span class="n">pyfunc</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;runs:/</span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">run_id</span><span class="si">}</span><span class="s2">/meta_model&quot;</span><span class="p">)</span>
+<span class="n">loaded_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">df_test</span><span class="p">)</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">truncate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-intense-fg ansi-bold">---------------------------------------------------------------------------</span>
+<span class="ansi-red-intense-fg ansi-bold">AttributeError</span>                            Traceback (most recent call last)
+<span class="ansi-green-intense-fg ansi-bold">c:\Users\caner.turkseven\Documents\GitHub\ForecastFlowML\docs\source\notebooks\demo1.ipynb Cell 38</span> in <span class="ansi-cyan-fg">&lt;cell line: 2&gt;</span><span class="ansi-blue-intense-fg ansi-bold">()</span>
+<span class="ansi-green-fg">      &lt;a href=&#39;vscode-notebook-cell:/c%3A/Users/caner.turkseven/Documents/GitHub/ForecastFlowML/docs/source/notebooks/demo1.ipynb#X52sZmlsZQ%3D%3D?line=0&#39;&gt;1&lt;/a&gt;</span> import mlflow
+<span class="ansi-green-intense-fg ansi-bold">----&gt; &lt;a href=&#39;vscode-notebook-cell:/c%3A/Users/caner.turkseven/Documents/GitHub/ForecastFlowML/docs/source/notebooks/demo1.ipynb#X52sZmlsZQ%3D%3D?line=1&#39;&gt;2&lt;/a&gt;</span> model = mlflow.pyfunc.load_model(f&#34;runs:/{model.run_id}/meta_model&#34;)
+<span class="ansi-green-fg">      &lt;a href=&#39;vscode-notebook-cell:/c%3A/Users/caner.turkseven/Documents/GitHub/ForecastFlowML/docs/source/notebooks/demo1.ipynb#X52sZmlsZQ%3D%3D?line=2&#39;&gt;3&lt;/a&gt;</span> model.predict(df_test).show(truncate=False)
+
+<span class="ansi-red-intense-fg ansi-bold">AttributeError</span>: &#39;PyFuncModel&#39; object has no attribute &#39;run_id&#39;
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="demo2.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">asdasd</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../tutorials.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Tutorials</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Caner Turkseven
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Distributed Models Over Distributed Data</a><ul>
+<li><a class="reference internal" href="#Requirements">Requirements</a></li>
+<li><a class="reference internal" href="#Import-packages">Import packages</a></li>
+<li><a class="reference internal" href="#Initialize-Spark">Initialize Spark</a></li>
+<li><a class="reference internal" href="#Load-sample-dataset-from-package">Load sample dataset from package</a></li>
+<li><a class="reference internal" href="#Feature-Engineering">Feature Engineering</a><ul>
+<li><a class="reference internal" href="#Create-feature-extractor-model">Create feature extractor model</a></li>
+<li><a class="reference internal" href="#Extract-features-and-checkpoint-dataframe-to-save-intermediate-results">Extract features and checkpoint dataframe to save intermediate results</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Training">Training</a><ul>
+<li><a class="reference internal" href="#Split-dataset-into-train-and-test">Split dataset into train and test</a></li>
+<li><a class="reference internal" href="#initialize-meta-model">initialize meta model</a></li>
+<li><a class="reference internal" href="#Train-the-model">Train the model</a></li>
+<li><a class="reference internal" href="#Check-your-estimators">Check your estimators</a></li>
+<li><a class="reference internal" href="#Cross-validation-forecast-results-across-groups">Cross validation forecast results across groups</a></li>
+<li><a class="reference internal" href="#Feature-importance-graphs-per-group-and-forecat-horizon">Feature importance graphs per group and forecat horizon</a></li>
+<li><a class="reference internal" href="#Open-MLflow-UI">Open MLflow UI</a></li>
+<li><a class="reference internal" href="#Click-on-one-of-the-groups">Click on one of the groups</a></li>
+<li><a class="reference internal" href="#Logged-models-per-forecasting-horizon-and-used-features">Logged models per forecasting horizon and used features</a></li>
+<li><a class="reference internal" href="#Aggregated-cross-validation-forecast-graph-for-all-time-series-in-the-group">Aggregated cross validation forecast graph for all time series in the group</a></li>
+<li><a class="reference internal" href="#Feature-importance-graph-per-model">Feature importance graph per model</a></li>
+<li><a class="reference internal" href="#Optimisation-Visualisations">Optimisation Visualisations</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#Inference">Inference</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/scripts/furo.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>
