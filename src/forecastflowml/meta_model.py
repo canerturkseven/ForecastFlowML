@@ -27,7 +27,7 @@ class ForecastFlowML:
         self.target_col = target_col
         self.date_frequency = date_frequency
         self.model = model
-        self.hyperparams = hyperparams if hyperparams is not None else hyperparams
+        self.hyperparams = hyperparams if hyperparams is not None else {}
         self.max_forecast_horizon = max_forecast_horizon
         self.model_horizon = model_horizon
         self.lag_feature_range = lag_feature_range
@@ -312,7 +312,7 @@ class ForecastFlowML:
             df.groupby([group_col, *param_grid.keys()])
             .apply(_grid_search_udf)
             .toPandas()
-            .sort_values(by=['group','score'],ascending=False)
+            .sort_values(by=["group", "score"], ascending=False)
             .reset_index()
         )
 
