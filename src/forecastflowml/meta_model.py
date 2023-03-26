@@ -1,135 +1,37 @@
-import mlflow
+import pickle
 import re
-import os
-import functools
-import plotly
+import datetime
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql import SparkSession, DataFrame
-from forecastflowml.optimizer import Optimizer
-from forecastflowml.artifacts import log_metric, log_cv_forecast_graph
+from forecastflowml.model_selection import cross_val_forecast, score_func
+from forecastflowml.time_based_split import TimeBasedSplit
 
 
-class MetaModel(mlflow.pyfunc.PythonModel):
+class ForecastFlowML:
     def __init__(
         self,
-        id_cols,
+        id_col,
         group_col,
         date_col,
         target_col,
         date_frequency,
         max_forecast_horizon,
         model_horizon,
-        hyperparam_space_fn,
-        max_hyperparam_evals=1,
-        n_cv_splits=1,
-        scoring_metric="neg_mean_squared_error",
+        model,
+        hyperparams=None,
         lag_feature_range=0,
-        n_jobs=1,
-        cv_step_length=None,
     ):
-        self.id_cols = id_cols
+        self.id_col = id_col
         self.group_col = group_col
         self.date_col = date_col
         self.target_col = target_col
         self.date_frequency = date_frequency
-        self.n_cv_splits = n_cv_splits
+        self.model = model
+        self.hyperparams = hyperparams if hyperparams is not None else hyperparams
         self.max_forecast_horizon = max_forecast_horizon
-        self.cv_step_length = (
-            cv_step_length if cv_step_length is not None else max_forecast_horizon
-        )
         self.model_horizon = model_horizon
         self.lag_feature_range = lag_feature_range
-        self.max_hyperparam_evals = max_hyperparam_evals
-        self.scoring_metric = scoring_metric
-        self.hyperparam_space_fn = hyperparam_space_fn
-        self.n_jobs = n_jobs
         self.n_horizon = max_forecast_horizon // model_horizon
-
-    @property
-    def n_horizon(self):
-        return self._n_horizon
-
-    @n_horizon.setter
-    def n_horizon(self, value):
-        self._n_horizon = value
-
-    @property
-    def estimators(self):
-        est_dict = {}
-        for group_name, run_id in self.group_run_ids.items():
-            group_dict = {}
-            for i in range(self.n_horizon):
-                model_path = f"runs:/{run_id}/models/horizon_{i}"
-                model = mlflow.lightgbm.load_model(model_path)
-                group_dict[f"horizon_{i}"] = model
-            est_dict[group_name] = group_dict
-        return est_dict
-
-    @property
-    def features(self):
-        feature_dict = {}
-        for group_name, run_id in self.group_run_ids.items():
-            group_dict = {}
-            for i in range(self.n_horizon):
-                model_path = f"runs:/{run_id}/models/horizon_{i}"
-                model_info = mlflow.models.get_model_info(model_path)
-                features = model_info.signature.inputs.input_names()
-                group_dict[f"horizon_{i}"] = features
-            feature_dict[group_name] = group_dict
-        return feature_dict
-
-    @property
-    def feature_importance(self):
-        importance_dict = {}
-        for group_name, run_id in self.group_run_ids.items():
-            group_dict = {}
-            for i in range(self.n_horizon):
-                path = mlflow.artifacts.download_artifacts(
-                    run_id=run_id, artifact_path="feature_importance"
-                )
-                graph = plotly.io.read_json(os.path.join(path, f"horizon_{i}.json"))
-                data = graph.data[0]
-                group_dict[f"horizon_{i}"] = list(zip(data.y, data.x))
-            importance_dict[group_name] = group_dict
-        return importance_dict
-
-    @property
-    def feature_importance_graphs(self):
-        graph_dict = {}
-        for group_name, run_id in self.group_run_ids.items():
-            group_dict = {}
-            for i in range(self.n_horizon):
-                path = mlflow.artifacts.download_artifacts(
-                    run_id=run_id, artifact_path="feature_importance"
-                )
-                graph = plotly.io.read_json(os.path.join(path, f"horizon_{i}.json"))
-                group_dict[f"horizon_{i}"] = graph
-            graph_dict[group_name] = group_dict
-        return graph_dict
-
-    @property
-    def cv_forecast(self):
-        forecast_list = []
-        for run_id in self.group_run_ids.values():
-            path = mlflow.artifacts.download_artifacts(
-                run_id=run_id, artifact_path="cv_forecast"
-            )
-            spark = SparkSession.builder.getOrCreate()
-            cv_forecast = spark.read.parquet(path)
-            forecast_list.append(cv_forecast)
-        return functools.reduce(DataFrame.unionByName, forecast_list)
-
-    @property
-    def cv_forecast_graph(self):
-        graph_dict = {}
-        for group_name, run_id in self.group_run_ids.items():
-            path = mlflow.artifacts.download_artifacts(
-                run_id=run_id, artifact_path="cv_forecast_graph"
-            )
-            graph = plotly.io.read_json(os.path.join(path, f"cv_forecast_graph.json"))
-            graph_dict[group_name] = graph
-        return graph_dict
 
     def _filter_horizon(self, df, forecast_horizon):
         dates = df[self.date_col].sort_values().unique()
@@ -140,8 +42,7 @@ class MetaModel(mlflow.pyfunc.PythonModel):
         numeric_cols = [
             col
             for col in df.select_dtypes("number").columns
-            if col
-            not in [*self.id_cols, self.group_col, self.date_col, self.target_col]
+            if col not in [self.id_col, self.group_col, self.date_col, self.target_col]
         ]
         lag_cols = [
             col
@@ -170,139 +71,292 @@ class MetaModel(mlflow.pyfunc.PythonModel):
             )
         ]
 
-    def _forecast_horizon(self, horizon_id):
+    def _forecast_horizon(self, i):
         return list(
             range(
-                horizon_id * self.model_horizon + 1,
-                (horizon_id + 1) * self.model_horizon + 1,
+                i * self.model_horizon + 1,
+                (i + 1) * self.model_horizon + 1,
             )
         )
 
-    def _create_runs(self, df):
-        with mlflow.start_run() as parent_run:
-            self.run_id = parent_run.info.run_id
-            mlflow.pyfunc.log_model(python_model=self, artifact_path="meta_model")
-            group_names = [
-                group[0]
-                for group in df.select(self.group_col).dropDuplicates().collect()
-            ]
-            self.group_run_ids = {}
-            for group_name in group_names:
-                with mlflow.start_run(run_name=group_name, nested=True) as child_run:
-                    self.group_run_ids[group_name] = child_run.info.run_id
-            return self.group_run_ids
+    def _serialize(self, df):
+        group_col = self.group_col
+
+        @F.pandas_udf(
+            f"group string, data binary",
+            functionType=F.PandasUDFType.GROUPED_MAP,
+        )
+        def _serialize_udf(df):
+            return pd.DataFrame(
+                [{"group": df[group_col].iloc[0], "data": pickle.dumps(df)}]
+            )
+
+        return df.groupby(group_col).apply(_serialize_udf)
+
+    def _train_grid(self, df):
+
+        df = self._serialize(df)
+
+        if issubclass(type(self.model), type):
+            model_col = F.lit(pickle.dumps(self.model))
+            df = df.withColumn("model", model_col)
+        else:
+            model_dict = dict((k, pickle.dumps(v)) for k, v in self.model.items())
+            map_col = F.create_map([F.lit(x) for i in model_dict.items() for x in i])
+            df = df.withColumn("model", map_col[F.col("group")])
+
+        return df
 
     def train(self, df):
-        id_cols = self.id_cols
-        date_col = self.date_col
-        target_col = self.target_col
-        max_forecast_horizon = self.max_forecast_horizon
-        n_horizon = self.n_horizon
-        date_frequency = self.date_frequency
-        scoring_metric = self.scoring_metric
-        max_hyperparam_evals = self.max_hyperparam_evals
-        n_cv_splits = self.n_cv_splits
-        hyperparam_space_fn = self.hyperparam_space_fn
         group_col = self.group_col
-        tracking_uri = mlflow.get_tracking_uri()
-        cv_step_length = self.cv_step_length
-        n_jobs = self.n_jobs
-        group_run_ids = self._create_runs(df)
+        target_col = self.target_col
+        model = self.model
+        hyperparams = self.hyperparams
 
         @F.pandas_udf(
-            "group_name string, horizon_id int, status string",
+            (
+                "group:string, forecast_horizon:array<array<int>>, model:array<binary>,"
+                "start_time:string, end_time:string, elapsed_seconds:float"
+            ),
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
-        def train_udf(df):
-            mlflow.set_tracking_uri(tracking_uri)
-            group_name = df[group_col].iloc[0]
-            group_run_id = group_run_ids[group_name]
-            horizon_id = df["horizon_id"].iloc[0]
-            df = df.drop("horizon_id", axis=1)
+        def _train_udf(df):
+            start = datetime.datetime.now()
 
-            with mlflow.start_run(run_id=group_run_id):
+            group = df[group_col].iloc[0]
+            group_model = model() if hyperparams == {} else model(**hyperparams[group])
 
-                forecast_horizon = self._forecast_horizon(horizon_id)
+            model_list = []
+            forecast_horizon_list = []
+            for i in range(self.n_horizon):
+
+                forecast_horizon = self._forecast_horizon(i)
                 features = self._filter_features(df, forecast_horizon)
 
-                optimizer = Optimizer(
-                    group_name=df[group_col].iloc[0],
-                    id_cols=id_cols,
-                    date_col=date_col,
-                    target_col=target_col,
-                    features=features,
-                    cv_step_length=cv_step_length,
-                    max_forecast_horizon=max_forecast_horizon,
-                    forecast_horizon=forecast_horizon,
-                    hyperparam_space_fn=hyperparam_space_fn,
-                    date_frequency=date_frequency,
-                    n_cv_splits=n_cv_splits,
-                    scoring_metric=scoring_metric,
-                    max_hyperparam_evals=max_hyperparam_evals,
-                    n_jobs=n_jobs,
-                )
-                optimizer.run(df)
+                X = df[features]
+                y = df[target_col]
+
+                group_model.fit(X, y)
+
+                forecast_horizon_list.append(forecast_horizon)
+                model_list.append(pickle.dumps(group_model))
+
+            end = datetime.datetime.now()
+            elapsed = end - start
+            seconds = round(elapsed.total_seconds(), 1)
 
             return pd.DataFrame(
-                [{"group_name": group_name, "horizon_id": horizon_id, "status": "ok"}]
+                [
+                    {
+                        "group": group,
+                        "forecast_horizon": forecast_horizon_list,
+                        "model": model_list,
+                        "start_time": start.strftime("%d-%b-%Y (%H:%M:%S)"),
+                        "end_time": end.strftime("%d-%b-%Y (%H:%M:%S)"),
+                        "elapsed_seconds": seconds,
+                    },
+                ]
             )
-
-        (
-            df.withColumn("date", F.to_timestamp("date"))
-            .withColumn(
-                "horizon_id", F.explode(F.array(list(map(F.lit, range(n_horizon)))))
-            )
-            .groupby(group_col, "horizon_id")
-            .apply(train_udf)
-            .collect()
-        )
-        log_metric(group_run_ids, target_col, scoring_metric)
-        log_cv_forecast_graph(group_run_ids, id_cols, target_col, date_col)
-
-    def predict(self, context, model_input):
-        tracking_uri = mlflow.get_tracking_uri()
-        group_col = self.group_col
-        parent_run_id = self.run_id
-        id_cols = self.id_cols
-        date_col = self.date_col
-        n_horizon = self.n_horizon
-        schema = ", ".join(
-            [
-                *[f"`{col}` string" for col in self.id_cols],
-                f"`{date_col}` date",
-                "prediction double",
-            ]
-        )
-
-        @F.pandas_udf(
-            schema,
-            functionType=F.PandasUDFType.GROUPED_MAP,
-        )
-        def predict_udf(df):
-            mlflow.set_tracking_uri(tracking_uri)
-            group_name = df[group_col].iloc[0]
-            filter_string = (
-                f"tags.mlflow.parentRunId = '{parent_run_id}'"
-                f" and tags.mlflow.runName = '{group_name}'"
-            )
-            run_id = mlflow.search_runs(filter_string=filter_string)["run_id"].iloc[0]
-            horizon_id = df["horizon_id"].iloc[0]
-            model_uri = f"runs:/{run_id}/models/horizon_{horizon_id}"
-
-            model = mlflow.lightgbm.load_model(model_uri)
-            model_info = mlflow.models.get_model_info(model_uri)
-            forecast_horizon = self._forecast_horizon(horizon_id)
-            features = model_info.signature.inputs.input_names()
-
-            df = self._filter_horizon(df, forecast_horizon)
-            df["prediction"] = model.predict(df[features])
-
-            return df[[*id_cols, date_col, "prediction"]]
 
         return (
-            model_input.withColumn(
-                "horizon_id", F.explode(F.array(list(map(F.lit, range(n_horizon)))))
-            )
-            .groupBy(group_col, "horizon_id")
-            .apply(predict_udf)
+            df.withColumn("date", F.to_timestamp("date"))
+            .groupby(group_col)
+            .apply(_train_udf)
         )
+
+    def cross_validate(self, df, n_cv_splits, cv_step_length):
+        id_col = self.id_col
+        target_col = self.target_col
+        date_col = self.date_col
+        date_frequency = self.date_frequency
+        max_forecast_horizon = self.max_forecast_horizon
+        group_col = self.group_col
+        model = self.model
+        hyperparams = self.hyperparams
+
+        @F.pandas_udf(
+            (
+                "group string, id string, date date, cv string,"
+                "target float, forecast float"
+            ),
+            functionType=F.PandasUDFType.GROUPED_MAP,
+        )
+        def _cross_validate_udf(df):
+
+            group = df[group_col].iloc[0]
+            group_model = model() if hyperparams == {} else model(**hyperparams[group])
+
+            cv_forecast_list = []
+            for i in range(self.n_horizon):
+
+                forecast_horizon = self._forecast_horizon(i)
+                features = self._filter_features(df, forecast_horizon)
+
+                cv = TimeBasedSplit(
+                    date_col=date_col,
+                    date_frequency=date_frequency,
+                    n_splits=int(n_cv_splits),
+                    forecast_horizon=list(forecast_horizon),
+                    step_length=int(cv_step_length),
+                    end_offset=int(max_forecast_horizon - int(max(forecast_horizon))),
+                ).split(df)
+
+                cv_forecast = cross_val_forecast(
+                    model=group_model,
+                    df=df,
+                    id_col=id_col,
+                    feature_cols=features,
+                    date_col=date_col,
+                    target_col=target_col,
+                    cv=cv,
+                )
+                cv_forecast_list.append(cv_forecast.insert(0, "group", group))
+
+            cv_forecast = pd.concat(cv_forecast_list).reset_index()
+
+            return cv_forecast
+
+        return (
+            df.withColumn("date", F.to_timestamp("date"))
+            .groupby(group_col)
+            .apply(_cross_validate_udf)
+        )
+
+    def grid_search(
+        self,
+        df,
+        param_grid,
+        n_cv_splits,
+        cv_step_length,
+        scoring_metric="neg_mean_squared_error",
+    ):
+        group_col = self.group_col
+        id_col = self.id_col
+        model = self.model
+        target_col = self.target_col
+        date_col = self.date_col
+        date_frequency = self.date_frequency
+        max_forecast_horizon = self.max_forecast_horizon
+
+        @F.pandas_udf(
+            (
+                "group string, score float, "
+                + ", ".join(
+                    [
+                        f"{key} {type(value[0]).__name__}"
+                        for key, value in param_grid.items()
+                    ]
+                )
+            ),
+            functionType=F.PandasUDFType.GROUPED_MAP,
+        )
+        def _grid_search_udf(df):
+
+            group = df[group_col].iloc[0]
+            hyperparams = df[list(param_grid.keys())].iloc[0].to_dict()
+            group_model = model(**hyperparams)
+
+            cv_forecast_list = []
+            for i in range(self.n_horizon):
+
+                forecast_horizon = self._forecast_horizon(i)
+                features = self._filter_features(df, forecast_horizon)
+
+                cv = TimeBasedSplit(
+                    date_col=date_col,
+                    date_frequency=date_frequency,
+                    n_splits=int(n_cv_splits),
+                    forecast_horizon=list(forecast_horizon),
+                    step_length=int(cv_step_length),
+                    end_offset=int(max_forecast_horizon - int(max(forecast_horizon))),
+                ).split(df)
+
+                cv_forecast = cross_val_forecast(
+                    model=group_model,
+                    df=df,
+                    id_col=id_col,
+                    feature_cols=features,
+                    date_col=date_col,
+                    target_col=target_col,
+                    cv=cv,
+                )
+                cv_forecast_list.append(cv_forecast)
+
+            cv_forecast = pd.concat(cv_forecast_list)
+            score = (
+                cv_forecast.groupby("cv")
+                .apply(lambda x: score_func(x["target"], x["forecast"], scoring_metric))
+                .mean()
+            )
+
+            return pd.DataFrame(
+                [
+                    {
+                        **{
+                            "group": group,
+                            "score": score,
+                        },
+                        **hyperparams,
+                    }
+                ]
+            )
+
+        df = df.withColumn("date", F.to_timestamp("date"))
+
+        for key in param_grid.keys():
+            values = param_grid[key]
+            column = F.explode(F.array([F.lit(v) for v in values]))
+            df = df.withColumn(key, column)
+
+        return (
+            df.groupby([group_col, *param_grid.keys()])
+            .apply(_grid_search_udf)
+            .toPandas()
+            .sort_values(by=['group','score'],ascending=False)
+            .reset_index()
+        )
+
+    def _predict_grid(self, df, trained_models):
+
+        df = self._serialize(df)
+        df = df.join(
+            trained_models.select("group", "forecast_horizon", "model"),
+            on="group",
+            how="left",
+        )
+        return df
+
+    def predict(self, df, trained_models):
+        id_col = self.id_col
+        date_col = self.date_col
+
+        @F.pandas_udf(
+            f"id string, date date, prediction float",
+            functionType=F.PandasUDFType.GROUPED_MAP,
+        )
+        def _predict_udf(df):
+
+            data = pickle.loads(df["data"].iloc[0])
+            forecast_horizon_list = df["forecast_horizon"].iloc[0]
+            model_list = df["model"].iloc[0]
+
+            result_list = []
+            for i in range(self.n_horizon):
+
+                forecast_horizon = forecast_horizon_list[i]
+                features = self._filter_features(data, forecast_horizon)
+                model_data = self._filter_horizon(data, forecast_horizon)
+
+                model = pickle.loads(model_list[i])
+                model_data["prediction"] = model.predict(model_data[features])
+
+                result_list.append(model_data)
+
+            result = pd.concat(result_list).reset_index()
+
+            return result[[id_col, date_col, "prediction"]]
+
+        df = df.withColumn("date", F.to_timestamp("date"))
+        df = self._predict_grid(df, trained_models)
+
+        return df.groupby("group").apply(_predict_udf)
