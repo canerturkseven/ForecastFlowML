@@ -121,7 +121,7 @@ class TimeBasedSplit:
     def _check_n_splits(self, df):
 
         max_date = df[self.date_col].max().to_pydatetime()
-        max_iter = (
+        max_iter = int(
             self.end_offset
             + max(self.forecast_horizon)
             + ((self.n_splits-1) * self.step_length)
@@ -158,7 +158,7 @@ class TimeBasedSplit:
                 **{
                     date_frequency: i * step_length
                     + end_offset
-                    + max(forecast_horizon)
+                    + int(max(forecast_horizon))
                 }
             )
             test_dates = [
