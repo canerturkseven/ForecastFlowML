@@ -1128,11 +1128,11 @@ class FeatureExtractor:
         date_col,
         date_frequency,
         target_col,
-        target_encodings,
-        date_features,
-        history_lengths,
-        encode_events,
-        count_consecutive_values,
+        target_encodings=None,
+        date_features=None,
+        history_lengths=None,
+        encode_events=None,
+        count_consecutive_values=None,
     ):
         self.id_col = id_col
         self.date_col = date_col
@@ -1146,7 +1146,7 @@ class FeatureExtractor:
 
     def transform(self, df):
         stages = []
-        if self.target_encodings:
+        if self.target_encodings is not None:
             stages.append(
                 LagWindowSummarizer(
                     idCol=self.id_col,
@@ -1156,7 +1156,7 @@ class FeatureExtractor:
                     features=self.target_encodings,
                 )
             )
-        if self.count_consecutive_values:
+        if self.count_consecutive_values is not None:
             stages.append(
                 CountConsecutiveValues(
                     idCol=self.id_col,
@@ -1166,7 +1166,7 @@ class FeatureExtractor:
                     lags=self.count_consecutive_values["lags"],
                 )
             )
-        if self.history_lengths:
+        if self.history_lengths is not None:
             stages.append(
                 HistoryLength(
                     idCol=self.id_col,
@@ -1175,7 +1175,7 @@ class FeatureExtractor:
                     dateFrequency=self.date_frequency,
                 )
             )
-        if self.encode_events:
+        if self.encode_events is not None:
             stages.append(
                 TriangleEventEncoder(
                     idCol=self.id_col,
@@ -1185,7 +1185,7 @@ class FeatureExtractor:
                     window=self.encode_events["window"],
                 )
             )
-        if self.date_features:
+        if self.date_features is not None:
             stages.append(
                 DateFeatures(
                     dateCol=self.date_col,
