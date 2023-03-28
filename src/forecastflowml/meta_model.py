@@ -124,7 +124,9 @@ class ForecastFlowML:
             start = datetime.datetime.now()
 
             group = df[group_col].iloc[0]
-            group_model = model() if hyperparams == {} else model(**hyperparams[group])
+            group_model = (
+                model if hyperparams == {} else model.set_params(**hyperparams[group])
+            )
 
             model_list = []
             forecast_horizon_list = []
@@ -184,7 +186,9 @@ class ForecastFlowML:
         def _cross_validate_udf(df):
 
             group = df[group_col].iloc[0]
-            group_model = model() if hyperparams == {} else model(**hyperparams[group])
+            group_model = (
+                model if hyperparams == {} else model.set_params(**hyperparams[group])
+            )
 
             cv_forecast_list = []
             for i in range(self.n_horizon):
@@ -210,9 +214,10 @@ class ForecastFlowML:
                     target_col=target_col,
                     cv=cv,
                 )
-                cv_forecast_list.append(cv_forecast.insert(0, "group", group))
+                cv_forecast_list.append(cv_forecast)
 
-            cv_forecast = pd.concat(cv_forecast_list).reset_index()
+            cv_forecast = pd.concat(cv_forecast_list).reset_index(drop=True)
+            cv_forecast.insert(0, "group", group)
 
             return cv_forecast
 
@@ -254,7 +259,7 @@ class ForecastFlowML:
 
             group = df[group_col].iloc[0]
             hyperparams = df[list(param_grid.keys())].iloc[0].to_dict()
-            group_model = model(**hyperparams)
+            group_model = model.set_params(**hyperparams)
 
             cv_forecast_list = []
             for i in range(self.n_horizon):
