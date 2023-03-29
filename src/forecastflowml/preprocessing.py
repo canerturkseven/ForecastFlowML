@@ -1,4 +1,3 @@
-import itertools
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 from pyspark.ml import Transformer, Estimator, Model, Pipeline
@@ -30,21 +29,10 @@ class HistoryLength(Estimator):
         "id column",
         typeConverter=TypeConverters.toString,
     )
-    partitionCols = Param(
-        Params._dummy(),
-        "partitionCols",
-        "partition columns",
-    )
     dateCol = Param(
         Params._dummy(),
         "dateCol",
         "date column",
-        typeConverter=TypeConverters.toString,
-    )
-    dateFrequency = Param(
-        Params._dummy(),
-        "dateFrequency",
-        "date frequency",
         typeConverter=TypeConverters.toString,
     )
 
@@ -52,9 +40,7 @@ class HistoryLength(Estimator):
     def __init__(
         self,
         idCol=None,
-        partitionCols=None,
         dateCol=None,
-        dateFrequency=None,
     ):
         super().__init__()
         kwargs = self._input_kwargs
@@ -64,9 +50,7 @@ class HistoryLength(Estimator):
     def setParams(
         self,
         idCol=None,
-        partitionCols=None,
         dateCol=None,
-        dateFrequency=None,
     ):
         kwargs = self._input_kwargs
         return self._set(**kwargs)
@@ -74,33 +58,19 @@ class HistoryLength(Estimator):
     def getIdCol(self):
         return self.getOrDefault(self.idCol)
 
-    def getPartitionCols(self):
-        return self.getOrDefault(self.partitionCols)
-
     def getDateCol(self):
         return self.getOrDefault(self.dateCol)
-
-    def getDateFrequency(self):
-        return self.getOrDefault(self.dateFrequency)
-
-    def setPartitionCols(self, partition_cols):
-        return self.setParams(partitionCols=partition_cols)
-
-    def setDateCol(self, date_col):
-        return self.setParams(dateCol=date_col)
-
-    def setDateFrequency(self, date_frequency):
-        return self.setParams(dateFrequency=date_frequency)
 
     def setIdCol(self, id_col):
         return self.setParams(idCol=id_col)
 
+    def setDateCol(self, date_col):
+        return self.setParams(dateCol=date_col)
+
     def _fit(self, df):
         return HistoryLengthModel(
             idCol=self.getIdCol(),
-            partitionCols=self.getPartitionCols(),
             dateCol=self.getDateCol(),
-            dateFrequency=self.getDateFrequency(),
             df_=df,
         )
 
@@ -112,21 +82,10 @@ class HistoryLengthModel(Model):
         "id column",
         typeConverter=TypeConverters.toString,
     )
-    partitionCols = Param(
-        Params._dummy(),
-        "partitionCols",
-        "partition columns",
-    )
     dateCol = Param(
         Params._dummy(),
         "dateCol",
         "date column",
-        typeConverter=TypeConverters.toString,
-    )
-    dateFrequency = Param(
-        Params._dummy(),
-        "dateFrequency",
-        "date frequency",
         typeConverter=TypeConverters.toString,
     )
     df_ = Param(
@@ -139,9 +98,7 @@ class HistoryLengthModel(Model):
     def __init__(
         self,
         idCol=None,
-        partitionCols=None,
         dateCol=None,
-        dateFrequency=None,
         df_=None,
     ):
         super().__init__()
@@ -152,9 +109,7 @@ class HistoryLengthModel(Model):
     def setParams(
         self,
         idCol=None,
-        partitionCols=None,
         dateCol=None,
-        dateFrequency=None,
         df_=None,
     ):
         kwargs = self._input_kwargs
@@ -163,26 +118,14 @@ class HistoryLengthModel(Model):
     def getIdCol(self):
         return self.getOrDefault(self.idCol)
 
-    def getPartitionCols(self):
-        return self.getOrDefault(self.partitionCols)
-
     def getDateCol(self):
         return self.getOrDefault(self.dateCol)
-
-    def getDateFrequency(self):
-        return self.getOrDefault(self.dateFrequency)
 
     def getDf_(self):
         return self.getOrDefault(self.df_)
 
-    def setPartitionCols(self, partition_cols):
-        return self.setParams(partitionCols=partition_cols)
-
     def setDateCol(self, date_col):
         return self.setParams(dateCol=date_col)
-
-    def setDateFrequency(self, date_frequency):
-        return self.setParams(dateFrequency=date_frequency)
 
     def setIdCol(self, id_col):
         return self.setParams(idCol=id_col)
@@ -190,21 +133,12 @@ class HistoryLengthModel(Model):
     def setDf_(self, df_):
         return self.setParams(df_=df_)
 
-    def _period_diff(self, window):
-        date_frequency = self.getDateFrequency()
-        date_col = self.getDateCol()
-        if date_frequency == "day":
-            return F.datediff(F.col(date_col), F.min(date_col).over(window))
-        if date_frequency == "week":
-            return F.datediff(F.col(date_col), F.min(date_col).over(window)) / 7
-        if date_frequency == "month":
-            return F.months_between(F.col(date_col), F.min(date_col).over(window))
-
     def _transform(self, df):
-        key_cols = [self.getDateCol(), self.getIdCol()]
-        non_key_cols = set(df.columns) - set(key_cols)
+        id_col = self.getIdCol()
+        date_col = self.getDateCol()
         df_ = self.getDf_()
-        partition_cols = self.getPartitionCols()
+        key_cols = [date_col, id_col]
+        non_key_cols = set(df.columns) - set(key_cols)
         df = df_.alias("df_fit").join(
             df.alias("df_transform"), on=key_cols, how="outer"
         )
@@ -218,13 +152,9 @@ class HistoryLengthModel(Model):
                 .withColumnRenamed(f"{col}_", col)
             )
 
-        for partition_col in partition_cols:
-            w = Window.partitionBy(partition_col)
-            if isinstance(partition_col, str):
-                output_col = f"history_length_{partition_col}"
-            if isinstance(partition_col, list):
-                output_col = f'history_length_{"_".join(partition_col)}'
-            df = df.withColumn(output_col, self._period_diff(w))
+        w = Window.partitionBy(id_col).orderBy(date_col)
+        df = df.withColumn("history_length", F.row_number().over(w))
+
         return df
 
 
@@ -247,12 +177,6 @@ class LagWindowSummarizer(Estimator):
         "date column",
         typeConverter=TypeConverters.toString,
     )
-    dateFrequency = Param(
-        Params._dummy(),
-        "dateFrequency",
-        "date frequency",
-        typeConverter=TypeConverters.toString,
-    )
     features = Param(
         Params._dummy(),
         "features",
@@ -265,7 +189,6 @@ class LagWindowSummarizer(Estimator):
         idCol=None,
         targetCol=None,
         dateCol=None,
-        dateFrequency=None,
         features=None,
     ):
         super().__init__()
@@ -278,7 +201,6 @@ class LagWindowSummarizer(Estimator):
         idCol=None,
         targetCol=None,
         dateCol=None,
-        dateFrequency=None,
         features=None,
     ):
         kwargs = self._input_kwargs
@@ -293,9 +215,6 @@ class LagWindowSummarizer(Estimator):
     def getDateCol(self):
         return self.getOrDefault(self.dateCol)
 
-    def getDateFrequency(self):
-        return self.getOrDefault(self.dateFrequency)
-
     def getFeatures(self):
         return self.getOrDefault(self.features)
 
@@ -304,9 +223,6 @@ class LagWindowSummarizer(Estimator):
 
     def setDateCol(self, date_col):
         return self.setParams(dateCol=date_col)
-
-    def setDateFrequency(self, date_frequency):
-        return self.setParams(dateFrequency=date_frequency)
 
     def setFeatures(self, features):
         return self.setParams(features=features)
@@ -319,7 +235,6 @@ class LagWindowSummarizer(Estimator):
             idCol=self.getIdCol(),
             targetCol=self.getTargetCol(),
             dateCol=self.getDateCol(),
-            dateFrequency=self.getDateFrequency(),
             features=self.getFeatures(),
             df_=df,
         )
@@ -344,12 +259,6 @@ class LagWindowSummarizerModel(Model):
         "date column",
         typeConverter=TypeConverters.toString,
     )
-    dateFrequency = Param(
-        Params._dummy(),
-        "dateFrequency",
-        "date frequency",
-        typeConverter=TypeConverters.toString,
-    )
     features = Param(
         Params._dummy(),
         "features",
@@ -367,7 +276,6 @@ class LagWindowSummarizerModel(Model):
         idCol=None,
         targetCol=None,
         dateCol=None,
-        dateFrequency=None,
         features=None,
         df_=None,
     ):
@@ -381,7 +289,6 @@ class LagWindowSummarizerModel(Model):
         idCol=None,
         targetCol=None,
         dateCol=None,
-        dateFrequency=None,
         features=None,
         df_=None,
     ):
@@ -400,9 +307,6 @@ class LagWindowSummarizerModel(Model):
     def getDateCol(self):
         return self.getOrDefault(self.dateCol)
 
-    def getDateFrequency(self):
-        return self.getOrDefault(self.dateFrequency)
-
     def getFeatures(self):
         return self.getOrDefault(self.features)
 
@@ -418,33 +322,15 @@ class LagWindowSummarizerModel(Model):
     def setDateCol(self, date_col):
         return self.setParams(dateCol=date_col)
 
-    def setDateFrequency(self, date_frequency):
-        return self.setParams(dateFrequency=date_frequency)
-
     def setFeatures(self, features):
         return self.setParams(features=features)
 
-    def _period_diff(self, df):
-        data_frequency = self.getDateFrequency()
-        date_col = self.getDateCol()
-        df = df.crossJoin(df.select(F.min(date_col).alias("min_period")))
-        if data_frequency == "day":
-            df = df.withColumn(
-                "period_number", F.datediff(F.col(date_col), "min_period")
-            )
-        if data_frequency == "week":
-            df = df.withColumn(
-                "period_number", F.datediff(F.col(date_col), "min_period") / 7
-            )
-        if data_frequency == "month":
-            df = df.withColumn(
-                "period_number", F.months_between(F.col(date_col), "min_period")
-            )
-        return df.drop("min_period")
-
     def _transform(self, df):
-
+        id_col = self.getIdCol()
+        features = self.getFeatures()
         target_col = self.getTargetCol()
+        date_col = self.getDateCol()
+
         key_cols = [self.getDateCol(), self.getIdCol()]
         non_key_cols = set(df.columns) - set(key_cols)
         df_ = self.getDf_()
@@ -460,27 +346,20 @@ class LagWindowSummarizerModel(Model):
                 .drop(col)
                 .withColumnRenamed(f"{col}_", col)
             )
-        df = self._period_diff(df)
 
-        for lag_feature in self.getFeatures():
-            partition_cols = lag_feature["partition_cols"]
-            windows = lag_feature["windows"]
-            lags = lag_feature["lags"]
-            functions = lag_feature["functions"]
-            output_col = "_".join(partition_cols)
-
-            iter_list = itertools.product(windows, lags, functions)
-            for rolling_window, lag, func in iter_list:
-                w = (
-                    Window.partitionBy(partition_cols)
-                    .orderBy("period_number")
-                    .rangeBetween(-(lag + rolling_window - 1), -lag)
-                )
-                df = df.withColumn(
-                    f"{output_col}_window_{rolling_window}_lag_{lag}_{func}",
-                    F.expr(f"{func}({target_col})").over(w),
-                )
-        return df.drop("period_number")
+        w1 = Window.partitionBy(id_col).orderBy(date_col)
+        for key, values in features.items():
+            if key == "lag":
+                for lag in values:
+                    df = df.withColumn(f"lag_{lag}", F.lag(target_col, lag).over(w1))
+            else:
+                for window, lag in values:
+                    w2 = w1.rowsBetween(-(lag + window), -lag)
+                    df = df.withColumn(
+                        f"window_{window}_lag_{lag}",
+                        F.expr(f"{key}({target_col})").over(w2),
+                    )
+        return df
 
 
 class TriangleEventEncoder(Estimator):
@@ -502,12 +381,6 @@ class TriangleEventEncoder(Estimator):
         "date column",
         typeConverter=TypeConverters.toString,
     )
-    dateFrequency = Param(
-        Params._dummy(),
-        "dateFrequency",
-        "date frequency",
-        typeConverter=TypeConverters.toString,
-    )
     window = Param(
         Params._dummy(),
         "window",
@@ -521,7 +394,6 @@ class TriangleEventEncoder(Estimator):
         idCol=None,
         eventCols=None,
         dateCol=None,
-        dateFrequency=None,
         window=None,
     ):
         super().__init__()
@@ -534,7 +406,6 @@ class TriangleEventEncoder(Estimator):
         idCol=None,
         eventCols=None,
         dateCol=None,
-        dateFrequency=None,
         window=None,
     ):
         kwargs = self._input_kwargs
@@ -552,9 +423,6 @@ class TriangleEventEncoder(Estimator):
     def getDateCol(self):
         return self.getOrDefault(self.dateCol)
 
-    def getDateFrequency(self):
-        return self.getOrDefault(self.dateFrequency)
-
     def setEventCols(self, event_cols):
         return self.setParams(eventCols=event_cols)
 
@@ -564,9 +432,6 @@ class TriangleEventEncoder(Estimator):
     def setDateCol(self, date_col):
         return self.setParams(dateCol=date_col)
 
-    def setDateFrequency(self, date_frequency):
-        return self.setParams(dateFrequency=date_frequency)
-
     def setIdCol(self, id_col):
         return self.setParams(idCol=id_col)
 
@@ -575,7 +440,6 @@ class TriangleEventEncoder(Estimator):
             idCol=self.getIdCol(),
             eventCols=self.getEventCols(),
             dateCol=self.getDateCol(),
-            dateFrequency=self.getDateFrequency(),
             window=self.getWindow(),
             df_=df,
         )
@@ -600,12 +464,6 @@ class TriangleEventEncoderModel(Model):
         "date column",
         typeConverter=TypeConverters.toString,
     )
-    dateFrequency = Param(
-        Params._dummy(),
-        "dateFrequency",
-        "date frequency",
-        typeConverter=TypeConverters.toString,
-    )
     window = Param(
         Params._dummy(),
         "window",
@@ -624,7 +482,6 @@ class TriangleEventEncoderModel(Model):
         idCol=None,
         eventCols=None,
         dateCol=None,
-        dateFrequency=None,
         window=None,
         df_=None,
     ):
@@ -638,7 +495,6 @@ class TriangleEventEncoderModel(Model):
         idCol=None,
         eventCols=None,
         dateCol=None,
-        dateFrequency=None,
         window=None,
         df_=None,
     ):
@@ -657,9 +513,6 @@ class TriangleEventEncoderModel(Model):
     def getDateCol(self):
         return self.getOrDefault(self.dateCol)
 
-    def getDateFrequency(self):
-        return self.getOrDefault(self.dateFrequency)
-
     def getWindow(self):
         return self.getOrDefault(self.window)
 
@@ -674,9 +527,6 @@ class TriangleEventEncoderModel(Model):
 
     def setDateCol(self, date_col):
         return self.setParams(dateCol=date_col)
-
-    def setDateFrequency(self, date_frequency):
-        return self.setParams(dateFrequency=date_frequency)
 
     def setWindow(self, window):
         return self.setParams(window=window)
@@ -697,7 +547,7 @@ class TriangleEventEncoderModel(Model):
         window = self.getWindow()
         df_ = self.getDf_()
 
-        key_cols = [date_col, id_col]
+        key_cols = [id_col, date_col]
         non_key_cols = set(df.columns) - set(key_cols)
         df = df_.alias("df_fit").join(
             df.alias("df_transform"), on=key_cols, how="outer"
@@ -712,36 +562,33 @@ class TriangleEventEncoderModel(Model):
                 .withColumnRenamed(f"{col}_", col)
             )
 
-        previous_rows = (
-            Window.partitionBy(id_col)
-            .orderBy(date_col)
-            .rowsBetween(Window.unboundedPreceding, 0)
-        )
-        following_rows = (
-            Window.partitionBy(id_col)
-            .orderBy(date_col)
-            .rowsBetween(0, Window.unboundedFollowing)
-        )
+        w = Window.partitionBy(id_col).orderBy(date_col)
+        previous_rows = w.rowsBetween(Window.unboundedPreceding, 0)
+        following_rows = w.rowsBetween(0, Window.unboundedFollowing)
+
         for event_col in event_cols:
             df = (
                 df.withColumn(
                     "last_event_date",
                     F.last(
-                        F.when(F.col(event_col) == 1, F.col(date_col)), ignorenulls=True
+                        F.when(F.col(event_col) == 1, F.row_number().over(w)),
+                        ignorenulls=True,
                     ).over(previous_rows),
                 )
                 .withColumn(
                     "next_event_date",
                     F.first(
-                        F.when(F.col(event_col) == 1, F.col(date_col)), ignorenulls=True
+                        F.when(F.col(event_col) == 1, F.row_number().over(w)),
+                        ignorenulls=True,
                     ).over(following_rows),
                 )
                 .withColumn(
-                    "periods_to_event", self._period_diff("next_event_date", date_col)
+                    "periods_to_event",
+                    F.col("next_event_date") - F.row_number().over(w),
                 )
                 .withColumn(
                     "periods_after_event",
-                    self._period_diff("last_event_date", date_col),
+                    F.col("last_event_date") - F.row_number().over(w),
                 )
                 .withColumn(
                     "periods_to_event",
@@ -1091,69 +938,36 @@ class DateFeatures(Transformer):
         return df
 
 
-class LocalCheckpointer(Transformer):
-    eager = Param(
-        Params._dummy(),
-        "eager",
-        "eager",
-        typeConverter=TypeConverters.toBoolean,
-    )
-
-    @keyword_only
-    def __init__(self, eager=None):
-        super().__init__()
-        self._setDefault(eager=True)
-        kwargs = self._input_kwargs
-        self.setParams(**kwargs)
-
-    @keyword_only
-    def setParams(self, eager=None):
-        kwargs = self._input_kwargs
-        return self._set(**kwargs)
-
-    def setEager(self, eager):
-        return self.setParams(eager=eager)
-
-    def getEager(self):
-        return self.getOrDefault(self.eager)
-
-    def _transform(self, df):
-        return df.localCheckpoint(eager=self.getEager())
-
-
 class FeatureExtractor:
     def __init__(
         self,
         id_col,
         date_col,
-        date_frequency,
         target_col,
-        target_encodings=None,
+        lag_window_features=None,
         date_features=None,
-        history_lengths=None,
         encode_events=None,
         count_consecutive_values=None,
+        history_length=False,
     ):
         self.id_col = id_col
         self.date_col = date_col
-        self.date_frequency = date_frequency
         self.target_col = target_col
-        self.target_encodings = target_encodings
+        self.lag_window_features = lag_window_features
         self.date_features = date_features
-        self.history_lengths = history_lengths
         self.encode_events = encode_events
         self.count_consecutive_values = count_consecutive_values
+        self.history_length = history_length
 
     def transform(self, df):
         stages = []
-        if self.target_encodings is not None:
+        if self.lag_window_features is not None:
             stages.append(
                 LagWindowSummarizer(
                     idCol=self.id_col,
                     targetCol=self.target_col,
                     dateCol=self.date_col,
-                    dateFrequency=self.date_frequency,
-                    features=self.target_encodings,
+                    features=self.lag_window_features,
                 )
             )
         if self.count_consecutive_values is not None:
@@ -1166,13 +980,11 @@ class FeatureExtractor:
                     lags=self.count_consecutive_values["lags"],
                 )
             )
-        if self.history_lengths is not None:
+        if self.history_length:
             stages.append(
                 HistoryLength(
                     idCol=self.id_col,
-                    partitionCols=self.history_lengths,
                     dateCol=self.date_col,
-                    dateFrequency=self.date_frequency,
                 )
             )
         if self.encode_events is not None:
@@ -1180,7 +992,6 @@ class FeatureExtractor:
                 TriangleEventEncoder(
                     idCol=self.id_col,
                     dateCol=self.date_col,
-                    dateFrequency=self.date_frequency,
                     eventCols=self.encode_events["cols"],
                     window=self.encode_events["window"],
                 )
