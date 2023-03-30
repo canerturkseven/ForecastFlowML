@@ -14,6 +14,7 @@ class ForecastFlowML:
         group_col,
         date_col,
         target_col,
+        categorical_cols,
         date_frequency,
         max_forecast_horizon,
         model_horizon,
@@ -25,6 +26,7 @@ class ForecastFlowML:
         self.group_col = group_col
         self.date_col = date_col
         self.target_col = target_col
+        self.categorical_cols = categorical_cols
         self.date_frequency = date_frequency
         self.model = model
         self.hyperparams = hyperparams if hyperparams is not None else {}
@@ -39,14 +41,14 @@ class ForecastFlowML:
         return df[df[self.date_col].isin(forecast_dates)]
 
     def _filter_features(self, df, forecast_horizon):
-        numeric_cols = [
+        numeric_category_cols = [
             col
-            for col in df.select_dtypes("number").columns
+            for col in df.select_dtypes(["number", "category"]).columns
             if col not in [self.id_col, self.group_col, self.date_col, self.target_col]
         ]
         lag_cols = [
             col
-            for col in numeric_cols
+            for col in numeric_category_cols
             if re.search("(^|_)lag(_|$)", col, re.IGNORECASE)
         ]
         keep_lags = (
@@ -64,7 +66,7 @@ class ForecastFlowML:
         )
         return [
             col
-            for col in numeric_cols
+            for col in numeric_category_cols
             if (
                 (re.search(keep_lags, col, re.IGNORECASE) is not None)
                 | (col not in lag_cols)
@@ -93,23 +95,10 @@ class ForecastFlowML:
 
         return df.groupby(group_col).apply(_serialize_udf)
 
-    def _train_grid(self, df):
-
-        df = self._serialize(df)
-
-        if issubclass(type(self.model), type):
-            model_col = F.lit(pickle.dumps(self.model))
-            df = df.withColumn("model", model_col)
-        else:
-            model_dict = dict((k, pickle.dumps(v)) for k, v in self.model.items())
-            map_col = F.create_map([F.lit(x) for i in model_dict.items() for x in i])
-            df = df.withColumn("model", map_col[F.col("group")])
-
-        return df
-
     def train(self, df):
         group_col = self.group_col
         target_col = self.target_col
+        categorical_cols = self.categorical_cols
         model = self.model
         hyperparams = self.hyperparams
 
@@ -123,6 +112,7 @@ class ForecastFlowML:
         def _train_udf(df):
             start = datetime.datetime.now()
 
+            df[categorical_cols] = df[categorical_cols].astype("category")
             group = df[group_col].iloc[0]
             group_model = (
                 model if hyperparams == {} else model.set_params(**hyperparams[group])
@@ -170,6 +160,7 @@ class ForecastFlowML:
         id_col = self.id_col
         target_col = self.target_col
         date_col = self.date_col
+        categorical_cols = self.categorical_cols
         date_frequency = self.date_frequency
         max_forecast_horizon = self.max_forecast_horizon
         group_col = self.group_col
@@ -185,6 +176,7 @@ class ForecastFlowML:
         )
         def _cross_validate_udf(df):
 
+            df[categorical_cols] = df[categorical_cols].astype("category")
             group = df[group_col].iloc[0]
             group_model = (
                 model if hyperparams == {} else model.set_params(**hyperparams[group])
@@ -239,6 +231,7 @@ class ForecastFlowML:
         id_col = self.id_col
         model = self.model
         target_col = self.target_col
+        categorical_cols = self.categorical_cols
         date_col = self.date_col
         date_frequency = self.date_frequency
         max_forecast_horizon = self.max_forecast_horizon
@@ -257,6 +250,7 @@ class ForecastFlowML:
         )
         def _grid_search_udf(df):
 
+            df[categorical_cols] = df[categorical_cols].astype("category")
             group = df[group_col].iloc[0]
             hyperparams = df[list(param_grid.keys())].iloc[0].to_dict()
             group_model = model.set_params(**hyperparams)
@@ -334,6 +328,7 @@ class ForecastFlowML:
     def predict(self, df, trained_models):
         id_col = self.id_col
         date_col = self.date_col
+        categorical_cols = self.categorical_cols
 
         @F.pandas_udf(
             f"id string, date date, prediction float",
@@ -342,6 +337,7 @@ class ForecastFlowML:
         def _predict_udf(df):
 
             data = pickle.loads(df["data"].iloc[0])
+            data[categorical_cols] = data[categorical_cols].astype("category")
             forecast_horizon_list = df["forecast_horizon"].iloc[0]
             model_list = df["model"].iloc[0]
 
