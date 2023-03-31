@@ -6,6 +6,8 @@ import pyspark.sql.functions as F
 from forecastflowml.model_selection import cross_val_forecast, score_func
 from forecastflowml.time_based_split import TimeBasedSplit
 
+pd.options.mode.chained_assignment = None
+
 
 class ForecastFlowML:
     def __init__(
