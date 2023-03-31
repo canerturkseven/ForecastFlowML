@@ -14,11 +14,11 @@ class ForecastFlowML:
         group_col,
         date_col,
         target_col,
-        categorical_cols,
         date_frequency,
         max_forecast_horizon,
         model_horizon,
         model,
+        categorical_cols=None,
         hyperparams=None,
         lag_feature_range=0,
     ):
@@ -112,7 +112,8 @@ class ForecastFlowML:
         def _train_udf(df):
             start = datetime.datetime.now()
 
-            df[categorical_cols] = df[categorical_cols].astype("category")
+            if categorical_cols is not None:
+                df[categorical_cols] = df[categorical_cols].astype("category")
             group = df[group_col].iloc[0]
             group_model = (
                 model if hyperparams == {} else model.set_params(**hyperparams[group])
@@ -176,7 +177,8 @@ class ForecastFlowML:
         )
         def _cross_validate_udf(df):
 
-            df[categorical_cols] = df[categorical_cols].astype("category")
+            if categorical_cols is not None:
+                df[categorical_cols] = df[categorical_cols].astype("category")
             group = df[group_col].iloc[0]
             group_model = (
                 model if hyperparams == {} else model.set_params(**hyperparams[group])
@@ -250,7 +252,8 @@ class ForecastFlowML:
         )
         def _grid_search_udf(df):
 
-            df[categorical_cols] = df[categorical_cols].astype("category")
+            if categorical_cols is not None:
+                df[categorical_cols] = df[categorical_cols].astype("category")
             group = df[group_col].iloc[0]
             hyperparams = df[list(param_grid.keys())].iloc[0].to_dict()
             group_model = model.set_params(**hyperparams)
@@ -337,7 +340,8 @@ class ForecastFlowML:
         def _predict_udf(df):
 
             data = pickle.loads(df["data"].iloc[0])
-            data[categorical_cols] = data[categorical_cols].astype("category")
+            if categorical_cols is not None:
+                data[categorical_cols] = data[categorical_cols].astype("category")
             forecast_horizon_list = df["forecast_horizon"].iloc[0]
             model_list = df["model"].iloc[0]
 
