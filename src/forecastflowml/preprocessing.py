@@ -856,7 +856,7 @@ class CountConsecutiveValuesModel(Model):
         for lag in lags:
             output_col = f"count_consecutive_value_lag_{lag}"
             df = df.withColumn(output_col, F.lag("count", lag).over(w3))
-        df = df.drop("value_exists", "value_group")
+        df = df.drop("mask", "group", "count")
         return df
 
 
