@@ -356,7 +356,7 @@ class LagWindowSummarizerModel(Model):
                 for window, lag in values:
                     w2 = w1.rowsBetween(-(lag + window), -lag)
                     df = df.withColumn(
-                        f"window_{window}_lag_{lag}",
+                        f"window_{window}_lag_{lag}_{key}",
                         F.expr(f"{key}({target_col})").over(w2),
                     )
         return df
@@ -879,6 +879,8 @@ class DateFeatures(Transformer):
         "day_of_year",
         "day_of_month",
         "week_of_year",
+        "week_of_month",
+        "weekend",
         "month",
         "quarter",
         "year",
@@ -929,6 +931,13 @@ class DateFeatures(Transformer):
                 df = df.withColumn(feature, F.dayofmonth(F.col(date_col)))
             if feature == "week_of_year":
                 df = df.withColumn(feature, F.weekofyear(F.col(date_col)))
+            if feature == "week_of_month":
+                df = df.withColumn(feature, F.ceil(F.dayofmonth(F.col(date_col)) / 7))
+            if feature == "weekend":
+                df = df.withColumn(
+                    feature,
+                    F.when(F.dayofweek(F.col(date_col)).isin([1, 7]), 1).otherwise(0),
+                )
             if feature == "month":
                 df = df.withColumn("month", F.month(F.col(date_col)))
             if feature == "quarter":
