@@ -842,22 +842,21 @@ class CountConsecutiveValuesModel(Model):
             .rowsBetween(Window.unboundedPreceding, 0)
         )
         w2 = (
-            Window.partitionBy(id_col, "value_group")
+            Window.partitionBy(id_col, "group")
             .orderBy(date_col)
             .rowsBetween(Window.unboundedPreceding, 0)
         )
+        df = (
+            df.withColumn("mask", F.when(F.col(value_col) == value, 1).otherwise(0))
+            .withColumn("group", F.sum(1 - F.col("mask")).over(w1))
+            .withColumn("count", F.sum("mask").over(w2))
+        )
+
         w3 = Window.partitionBy(id_col).orderBy(date_col)
         for lag in lags:
             output_col = f"count_consecutive_value_lag_{lag}"
-            df = (
-                df.withColumn(
-                    "value_exists", F.when(F.col(value_col) == value, 1).otherwise(0)
-                )
-                .withColumn("value_group", F.sum(1 - F.col("value_exists")).over(w1))
-                .withColumn(output_col, F.sum("value_exists").over(w2))
-                .withColumn(output_col, F.lag(output_col, lag).over(w3))
-                .drop("value_exists", "value_group")
-            )
+            df = df.withColumn(output_col, F.lag("count", lag).over(w3))
+        df = df.drop("value_exists", "value_group")
         return df
 
 
@@ -924,26 +923,40 @@ class DateFeatures(Transformer):
         date_col = self.getDateCol()
         for feature in features:
             if feature == "day_of_week":
-                df = df.withColumn(feature, F.dayofweek(F.col(date_col)))
+                df = df.withColumn(
+                    feature, F.dayofweek(F.col(date_col)).cast("tinyint")
+                )
             if feature == "day_of_year":
-                df = df.withColumn(feature, F.dayofyear(F.col(date_col)))
+                df = df.withColumn(
+                    feature, F.dayofyear(F.col(date_col)).cast("smallint")
+                )
             if feature == "day_of_month":
-                df = df.withColumn(feature, F.dayofmonth(F.col(date_col)))
+                df = df.withColumn(
+                    feature, F.dayofmonth(F.col(date_col)).cast("tinyint")
+                )
             if feature == "week_of_year":
-                df = df.withColumn(feature, F.weekofyear(F.col(date_col)))
+                df = df.withColumn(
+                    feature, F.weekofyear(F.col(date_col)).cast("tinyint")
+                )
             if feature == "week_of_month":
-                df = df.withColumn(feature, F.ceil(F.dayofmonth(F.col(date_col)) / 7))
+                df = df.withColumn(
+                    feature, F.ceil(F.dayofmonth(F.col(date_col)) / 7).cast("tinyint")
+                )
             if feature == "weekend":
                 df = df.withColumn(
                     feature,
-                    F.when(F.dayofweek(F.col(date_col)).isin([1, 7]), 1).otherwise(0),
+                    F.when(F.dayofweek(F.col(date_col)).isin([1, 7]), 1)
+                    .otherwise(0)
+                    .cast("tinyint"),
                 )
             if feature == "month":
-                df = df.withColumn("month", F.month(F.col(date_col)))
+                df = df.withColumn("month", F.month(F.col(date_col)).cast("tinyint"))
             if feature == "quarter":
-                df = df.withColumn("quarter", F.quarter(F.col(date_col)))
+                df = df.withColumn(
+                    "quarter", F.quarter(F.col(date_col)).cast("tinyint")
+                )
             if feature == "year":
-                df = df.withColumn("year", F.year(F.col(date_col)))
+                df = df.withColumn("year", F.year(F.col(date_col)).cast("smallint"))
         return df
 
 
