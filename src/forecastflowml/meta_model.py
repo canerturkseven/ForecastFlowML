@@ -20,7 +20,7 @@ class ForecastFlowML:
         model,
         categorical_cols=None,
         hyperparams=None,
-        lag_feature_range=0,
+        use_lag_range=0,
     ):
         self.id_col = id_col
         self.group_col = group_col
@@ -32,7 +32,7 @@ class ForecastFlowML:
         self.hyperparams = hyperparams if hyperparams is not None else {}
         self.max_forecast_horizon = max_forecast_horizon
         self.model_horizon = model_horizon
-        self.lag_feature_range = lag_feature_range
+        self.use_lag_range = use_lag_range
         self.n_horizon = max_forecast_horizon // model_horizon
 
     def _filter_horizon(self, df, forecast_horizon):
@@ -41,45 +41,38 @@ class ForecastFlowML:
         return df[df[self.date_col].isin(forecast_dates)]
 
     def _filter_features(self, df, forecast_horizon):
-        numeric_category_cols = [
+        min_lag = max(forecast_horizon)
+        lag_range = self.use_lag_range
+        feature_cols = [
             col
             for col in df.select_dtypes(["number", "category"]).columns
             if col not in [self.id_col, self.group_col, self.date_col, self.target_col]
         ]
         lag_cols = [
             col
-            for col in numeric_category_cols
-            if re.search("(^|_)lag(_|$)", col, re.IGNORECASE)
+            for col in feature_cols
+            if re.findall("(^|_)lag(_|$)", col, re.IGNORECASE)
         ]
-        keep_lags = (
-            "("
-            + ")|(".join(
-                [
-                    f"(^|_)lag_{i}(_|$)"
-                    for i in range(
-                        max(forecast_horizon),
-                        max(forecast_horizon) + self.lag_feature_range + 1,
-                    )
-                ]
-            )
-            + ")"
-        )
-        return [
+        keep_lags_str = "|".join(map(str, range(min_lag, min_lag + lag_range + 1)))
+        keep_lags = [
             col
-            for col in numeric_category_cols
-            if (
-                (re.search(keep_lags, col, re.IGNORECASE) is not None)
-                | (col not in lag_cols)
+            for col in lag_cols
+            if re.findall(
+                f"^lag_({keep_lags_str})$|(^|_)lag_{min_lag}(_|$)", col, re.IGNORECASE
             )
         ]
+        features = list(set(feature_cols) - set(lag_cols)) + keep_lags
+        return features
 
     def _forecast_horizon(self, i):
-        return list(
-            range(
-                i * self.model_horizon + 1,
-                (i + 1) * self.model_horizon + 1,
-            )
-        )
+        model_horizon = self.model_horizon
+        return list(range(i * model_horizon + 1, (i + 1) * model_horizon + 1))
+
+    def _convert_categorical(self, df):
+        categorical_cols = self.categorical_cols
+        if categorical_cols is not None:
+            df[categorical_cols] = df[categorical_cols].astype("category")
+        return df
 
     def _serialize(self, df):
         group_col = self.group_col
@@ -98,7 +91,6 @@ class ForecastFlowML:
     def train(self, df):
         group_col = self.group_col
         target_col = self.target_col
-        categorical_cols = self.categorical_cols
         model = self.model
         hyperparams = self.hyperparams
 
@@ -112,8 +104,7 @@ class ForecastFlowML:
         def _train_udf(df):
             start = datetime.datetime.now()
 
-            if categorical_cols is not None:
-                df[categorical_cols] = df[categorical_cols].astype("category")
+            df = self._convert_categorical(df)
             group = df[group_col].iloc[0]
             group_model = (
                 model if hyperparams == {} else model.set_params(**hyperparams[group])
@@ -161,7 +152,6 @@ class ForecastFlowML:
         id_col = self.id_col
         target_col = self.target_col
         date_col = self.date_col
-        categorical_cols = self.categorical_cols
         date_frequency = self.date_frequency
         max_forecast_horizon = self.max_forecast_horizon
         group_col = self.group_col
@@ -177,8 +167,7 @@ class ForecastFlowML:
         )
         def _cross_validate_udf(df):
 
-            if categorical_cols is not None:
-                df[categorical_cols] = df[categorical_cols].astype("category")
+            df = self._convert_categorical(df)
             group = df[group_col].iloc[0]
             group_model = (
                 model if hyperparams == {} else model.set_params(**hyperparams[group])
@@ -233,7 +222,6 @@ class ForecastFlowML:
         id_col = self.id_col
         model = self.model
         target_col = self.target_col
-        categorical_cols = self.categorical_cols
         date_col = self.date_col
         date_frequency = self.date_frequency
         max_forecast_horizon = self.max_forecast_horizon
@@ -252,8 +240,7 @@ class ForecastFlowML:
         )
         def _grid_search_udf(df):
 
-            if categorical_cols is not None:
-                df[categorical_cols] = df[categorical_cols].astype("category")
+            df = self._convert_categorical(df)
             group = df[group_col].iloc[0]
             hyperparams = df[list(param_grid.keys())].iloc[0].to_dict()
             group_model = model.set_params(**hyperparams)
@@ -331,7 +318,6 @@ class ForecastFlowML:
     def predict(self, df, trained_models):
         id_col = self.id_col
         date_col = self.date_col
-        categorical_cols = self.categorical_cols
 
         @F.pandas_udf(
             f"id string, date date, prediction float",
@@ -340,8 +326,7 @@ class ForecastFlowML:
         def _predict_udf(df):
 
             data = pickle.loads(df["data"].iloc[0])
-            if categorical_cols is not None:
-                data[categorical_cols] = data[categorical_cols].astype("category")
+            data = self._convert_categorical(data)
             forecast_horizon_list = df["forecast_horizon"].iloc[0]
             model_list = df["model"].iloc[0]
 
