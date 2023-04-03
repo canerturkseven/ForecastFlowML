@@ -16,7 +16,6 @@ release = "0.0"
 
 extensions = [
     "sphinx.ext.duration",
-    "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
