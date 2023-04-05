@@ -5,19 +5,8 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# asdasd\n",
-    "\n",
-    "## dsadw\n",
-    "\n",
-    "### weq"
+    "# notebook2"
    ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": []
   }
  ],
  "metadata": {
