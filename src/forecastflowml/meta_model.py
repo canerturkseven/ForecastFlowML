@@ -150,7 +150,9 @@ class ForecastFlowML:
             .apply(_train_udf)
         )
 
-    def cross_validate(self, df, n_cv_splits, cv_step_length):
+    def cross_validate(
+        self, df, n_cv_splits=3, max_train_size=None, cv_step_length=None, refit=True
+    ):
         id_col = self.id_col
         target_col = self.target_col
         date_col = self.date_col
@@ -159,6 +161,9 @@ class ForecastFlowML:
         group_col = self.group_col
         model = self.model
         hyperparams = self.hyperparams
+        cv_step_length = (
+            max_forecast_horizon if cv_step_length is None else cv_step_length
+        )
 
         @F.pandas_udf(
             (
@@ -187,6 +192,7 @@ class ForecastFlowML:
                     n_splits=int(n_cv_splits),
                     forecast_horizon=list(forecast_horizon),
                     step_length=int(cv_step_length),
+                    max_train_size=max_train_size,
                     end_offset=int(max_forecast_horizon - int(max(forecast_horizon))),
                 ).split(df)
 
@@ -198,6 +204,7 @@ class ForecastFlowML:
                     date_col=date_col,
                     target_col=target_col,
                     cv=cv,
+                    refit=refit,
                 )
                 cv_forecast_list.append(cv_forecast)
 
