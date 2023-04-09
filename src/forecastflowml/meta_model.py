@@ -5,6 +5,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 from forecastflowml.model_selection import cross_val_forecast, score_func
 from forecastflowml.time_based_split import TimeBasedSplit
+from forecastflowml.utils import _check_input_type
 
 pd.options.mode.chained_assignment = None
 
@@ -90,11 +91,53 @@ class ForecastFlowML:
 
         return df.groupby(group_col).apply(_serialize_udf)
 
-    def train(self, df):
+    def feature_importance(self, df_model=None):
+        def _feature_importance_udf(df):
+            group = df["group"].iloc[0]
+
+            importance_list = []
+            for i in range(len(df["model"].iloc[0])):
+                model = pickle.loads(df["model"].iloc[0][i])
+                forecast_horizon = df["forecast_horizon"].iloc[0][i]
+
+                importance = pd.DataFrame(
+                    zip(
+                        [forecast_horizon] * model.n_features_,
+                        model.feature_name_,
+                        model.feature_importances_,
+                    ),
+                    columns=["forecast_horizon", "feature", "importance"],
+                )
+                importance_list.append(importance)
+
+            df_importance = pd.concat(importance_list)
+            df_importance.insert(0, "group", group)
+
+            return df_importance
+
+        if df_model is not None:
+            pandas_udf = F.pandas_udf(
+                _feature_importance_udf,
+                (
+                    "group:string, forecast_horizon:array<int>, "
+                    "feature:string, importance:float"
+                ),
+                functionType=F.PandasUDFType.GROUPED_MAP,
+            )
+            return df_model.groupby("group").apply(pandas_udf).toPandas()
+        else:
+            return (
+                self.model_.groupby("group", group_keys=False)
+                .apply(_feature_importance_udf)
+                .reset_index(drop=True)
+            )
+
+    def train(self, df, spark=None, local_result=False):
         group_col = self.group_col
         target_col = self.target_col
         model = self.model
         hyperparams = self.hyperparams
+        input_type = _check_input_type(df)
 
         @F.pandas_udf(
             (
@@ -144,14 +187,25 @@ class ForecastFlowML:
                 ]
             )
 
-        return (
+        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
+        model_ = (
             df.withColumn("date", F.to_timestamp("date"))
             .groupby(group_col)
             .apply(_train_udf)
         )
+        if (input_type == "df_pandas") | (local_result):
+            self.model_ = model_.toPandas()
+        else:
+            return model_
 
     def cross_validate(
-        self, df, n_cv_splits=3, max_train_size=None, cv_step_length=None, refit=True
+        self,
+        df,
+        n_cv_splits=3,
+        max_train_size=None,
+        cv_step_length=None,
+        refit=True,
+        spark=None,
     ):
         id_col = self.id_col
         target_col = self.target_col
@@ -164,6 +218,7 @@ class ForecastFlowML:
         cv_step_length = (
             max_forecast_horizon if cv_step_length is None else cv_step_length
         )
+        input_type = _check_input_type(df)
 
         @F.pandas_udf(
             (
@@ -213,11 +268,16 @@ class ForecastFlowML:
 
             return cv_forecast
 
-        return (
+        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
+        cv_result = (
             df.withColumn("date", F.to_timestamp("date"))
             .groupby(group_col)
             .apply(_cross_validate_udf)
         )
+        if input_type == "df_pandas":
+            return cv_result.toPandas()
+        else:
+            return cv_result
 
     def grid_search(
         self,
@@ -226,6 +286,7 @@ class ForecastFlowML:
         n_cv_splits,
         cv_step_length,
         scoring_metric="neg_mean_squared_error",
+        spark=None,
     ):
         group_col = self.group_col
         id_col = self.id_col
@@ -234,6 +295,7 @@ class ForecastFlowML:
         date_col = self.date_col
         date_frequency = self.date_frequency
         max_forecast_horizon = self.max_forecast_horizon
+        input_type = _check_input_type(df)
 
         @F.pandas_udf(
             (
@@ -299,6 +361,7 @@ class ForecastFlowML:
                 ]
             )
 
+        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
         df = df.withColumn("date", F.to_timestamp("date"))
 
         for key in param_grid.keys():
@@ -324,9 +387,10 @@ class ForecastFlowML:
         )
         return df
 
-    def predict(self, df, trained_models):
+    def predict(self, df, trained_models=None, spark=None):
         id_col = self.id_col
         date_col = self.date_col
+        input_type = _check_input_type(df)
 
         @F.pandas_udf(
             f"id string, date date, prediction float",
@@ -355,7 +419,14 @@ class ForecastFlowML:
 
             return result[[id_col, date_col, "prediction"]]
 
+        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
         df = df.withColumn("date", F.to_timestamp("date"))
+
+        trained_models = (
+            spark.createDataFrame(self.model_)
+            if input_type == "df_pandas"
+            else trained_models
+        )
         df = self._predict_grid(df, trained_models)
 
         return df.groupby("group").apply(_predict_udf)
