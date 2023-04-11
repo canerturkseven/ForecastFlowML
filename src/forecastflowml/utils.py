@@ -14,5 +14,12 @@ def _check_input_type(df):
 
 
 def _check_spark(model, input_type, spark):
-    if ((input_type == "df_pandas") | hasattr(model, "model_")) & (spark == None):
-        raise ValueError("spark instance must be supplied in case of Pandas DataFrame.")
+    if (input_type == "df_pandas") & (spark == None):
+        raise ValueError("spark instance must be supplied in case of Pandas DataFrame")
+
+
+def _check_fitted(model, trained_models, spark):
+    if (not hasattr(model, "model_")) & (trained_models is None):
+        raise ValueError("train method should be called before predict")
+    if (trained_models is None) & (hasattr(model, "model_")) & ((spark == None)):
+        raise ValueError("spark instance must be supplied")
