@@ -1,39 +1,22 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-
 project = "ForecastFlowML"
 copyright = "2023, Caner Turkseven"
 author = "Caner Turkseven"
 
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
 extensions = [
     "myst_nb",
-    "sphinx_design",
-    "sphinx.ext.duration",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.viewcode",
 ]
 
 templates_path = ["_templates"]
 exclude_patterns = []
 
-
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_theme_options = {
-    # "show_nav_level": 2,
-    "announcement": "If you like ForecastFlowML, please give us a <i class='fa-solid fa-star fa-bounce' style='color: #e6d733;'></i> on <a href='https://github.com/canerturkseven/ForecastFlowML'>GitHub!</a>",
+    "announcement": (
+        "If you like ForecastFlowML, please give us a"
+        "<i class='fa-solid fa-star fa-bounce' style='color: #e6d733;'></i>"
+        "on <a href='https://github.com/canerturkseven/ForecastFlowML'>GitHub!</a>"
+    ),
     "icon_links": [
         {
             "name": "GitHub",
