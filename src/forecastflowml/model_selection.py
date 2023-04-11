@@ -1,6 +1,7 @@
 import pandas as pd
 import sklearn
 
+
 def score_func(y_true, y_pred, metric):
     sklearn_scorer = sklearn.metrics.get_scorer(metric)
     return sklearn_scorer._sign * sklearn_scorer._score_func(
@@ -8,14 +9,32 @@ def score_func(y_true, y_pred, metric):
     )
 
 
-def cross_val_forecast(model, df, id_col, feature_cols, date_col, target_col, cv):
+def cross_val_forecast(
+    *,
+    model,
+    df,
+    id_col,
+    feature_cols,
+    date_col,
+    target_col,
+    cv,
+    refit,
+):
     forecast = []
+
+    initial_train_idx = cv[-1][0]
+    model = model.fit(
+        df.loc[initial_train_idx, feature_cols], df.loc[initial_train_idx, target_col]
+    )
+
     for i, fold in enumerate(cv):
 
         train_idx, test_idx = fold[0], fold[1]
         df_train, df_test = df.iloc[train_idx], df.copy().iloc[test_idx]
 
-        model.fit(df_train[feature_cols], df_train[target_col])
+        if refit:
+            model = model.fit(df_train[feature_cols], df_train[target_col])
+
         df_test["forecast"] = model.predict(df_test[feature_cols])
         df_test["cv"] = str(i)
 
