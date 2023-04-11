@@ -1,6 +1,7 @@
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 import pandas as pd
+from forecastflowml.utils import _check_input_type, _check_spark
 
 
 def history_length(df, id_col, date_col):
@@ -109,7 +110,6 @@ class FeatureExtractor:
         encode_events=None,
         count_consecutive_values=None,
         history_length=False,
-        spark=None,
     ):
         self.id_col = id_col
         self.date_col = date_col
@@ -119,14 +119,12 @@ class FeatureExtractor:
         self.encode_events = encode_events
         self.count_consecutive_values = count_consecutive_values
         self.history_length = history_length
-        self.spark = spark
 
-    def transform(self, df):
-        if isinstance(df, pd.DataFrame):
-            type_pandas = True
-            df = self.spark.createDataFrame(df)
-        else:
-            type_pandas = False
+    def transform(self, df, spark=None):
+        input_type = _check_input_type(df)
+        _check_spark(df, input_type, spark)
+        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
+
         if self.lag_window_features is not None:
             df = lag_window_summarizer(
                 df,
@@ -149,5 +147,7 @@ class FeatureExtractor:
         if self.date_features is not None:
             df = date_features(df, self.date_col, self.date_features)
 
-        df = df.toPandas() if type_pandas else df
+        if input_type == "df_pandas":
+            df = df.toPandas()
+            df[self.date_col] = pd.to_datetime(df[self.date_col])
         return df
