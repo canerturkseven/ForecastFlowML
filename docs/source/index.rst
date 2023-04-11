@@ -38,11 +38,6 @@ You can install the packaging using the following command.
     pip install "git+https://github.com/canerturkseven/forecastflowml"
 
 
-.. warning::
-
-   Please also make sure that you have installed ``Spark >= 2.3``.
-
-
 
 
 
