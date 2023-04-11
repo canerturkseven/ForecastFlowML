@@ -5,7 +5,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 from forecastflowml.model_selection import cross_val_forecast, score_func
 from forecastflowml.time_based_split import TimeBasedSplit
-from forecastflowml.utils import _check_input_type, _check_spark
+from forecastflowml.utils import _check_input_type, _check_spark, _check_fitted
 
 pd.options.mode.chained_assignment = None
 
@@ -391,6 +391,7 @@ class ForecastFlowML:
         id_col = self.id_col
         date_col = self.date_col
         input_type = _check_input_type(df)
+        _check_fitted(self, trained_models, spark)
         _check_spark(self, input_type, spark)
 
         @F.pandas_udf(
