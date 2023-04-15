@@ -4,19 +4,20 @@ author = "Caner Turkseven"
 
 extensions = [
     "myst_nb",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
 ]
-
+autosummary_generate = True
+autodoc_typehints = "description"
+autodoc_typehints_format = "fully-qualified"
 templates_path = ["_templates"]
 exclude_patterns = []
 
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_theme_options = {
-    "announcement": (
-        "If you like ForecastFlowML, please give us a"
-        "<i class='fa-solid fa-star fa-bounce' style='color: #e6d733;'></i>"
-        "on <a href='https://github.com/canerturkseven/ForecastFlowML'>GitHub!</a>"
-    ),
     "icon_links": [
         {
             "name": "GitHub",
