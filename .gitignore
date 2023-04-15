@@ -8,3 +8,5 @@ dist/
 docs/**/*.parquet
 docs/build/
 docs/jupyter_execute/
+*.pickle
+docs/source/_autosummary
