@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import pyspark.sql.functions as F
 
 
 def load_walmart_m5(spark):
