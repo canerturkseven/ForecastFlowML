@@ -71,7 +71,18 @@ class ForecastFlowML:
     @property
     def model_(self) -> pd.DataFrame:
         """Trained models in pickled format"""
-        return self.model_
+        return self._model_
+
+    @model_.setter
+    def model_(self, value: pd.DataFrame) -> None:
+        """Set models attribute after training
+
+        Parameters
+        ----------
+        value
+            pandas DataFrame containing trained models
+        """
+        self._model_ = value
 
     def _filter_horizon(self, df, forecast_horizon):
         dates = df[self.date_col].sort_values().unique()
