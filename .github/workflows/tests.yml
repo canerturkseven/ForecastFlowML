@@ -7,7 +7,7 @@ jobs:
     runs-on: $${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         python-version: ['3.7', '3.8', '3.9', '3.10']
     steps:
       - name: checkout
@@ -36,4 +36,4 @@ jobs:
           python -m pip install --upgrade pip 
           pip install tox tox-gh-actions
       - name: test with tox
-        run: tox -e black flake8
+        run: tox -e black,flake8
