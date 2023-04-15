@@ -169,10 +169,8 @@ class ForecastFlowML:
         if df_model is not None:
             pandas_udf = F.pandas_udf(
                 _feature_importance_udf,
-                (
-                    "group:string, forecast_horizon:array<int>, "
-                    "feature:string, importance:float"
-                ),
+                "group:string, forecast_horizon:array<int>, "
+                "feature:string, importance:float",
                 functionType=F.PandasUDFType.GROUPED_MAP,
             )
             return df_model.groupby("group").apply(pandas_udf).toPandas()
@@ -213,10 +211,8 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         @F.pandas_udf(
-            (
-                "group:string, forecast_horizon:array<array<int>>, model:array<binary>,"
-                "start_time:string, end_time:string, elapsed_seconds:float"
-            ),
+            "group:string, forecast_horizon:array<array<int>>, model:array<binary>,"
+            "start_time:string, end_time:string, elapsed_seconds:float",
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _train_udf(df):
@@ -313,10 +309,8 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         @F.pandas_udf(
-            (
-                "group string, id string, date date, cv string,"
-                "target float, forecast float"
-            ),
+            "group string, id string, date date, cv string,"
+            "target float, forecast float",
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _cross_validate_udf(df):
