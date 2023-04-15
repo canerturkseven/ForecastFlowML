@@ -1,29 +1,61 @@
 import pickle
 import re
 import datetime
+import sklearn
+import pyspark
 import pandas as pd
 import pyspark.sql.functions as F
-from forecastflowml.model_selection import cross_val_forecast, score_func
-from forecastflowml.time_based_split import TimeBasedSplit
+from pyspark.sql import SparkSession
+from forecastflowml.model_selection import (
+    _cross_val_forecast,
+    _score_func,
+    _TimeBasedSplit,
+)
 from forecastflowml.utils import _check_input_type, _check_spark, _check_fitted
-
-pd.options.mode.chained_assignment = None
+from typing import List, Optional, Union, Dict
 
 
 class ForecastFlowML:
+    """Create forecaster Instance
+
+    Parameters
+    ----------
+    id_col
+        Time series identifer column.
+    group_col
+        Column to partition the dataframe.
+    date_col
+        Date column.
+    target_col
+        Target column.
+    date_frequency
+        Date frequency of the dataframe.
+    model_horizon
+        Forecast horizon for a single model.
+    max_forecast_horizon
+        Maximum horizon to generate the forecast. Needs to be multiple of
+        ``model_horizon``.
+    model
+        Regressor compatible with ``scikit-learn`` API.
+    categorical_cols
+        List of columns to treat as categorical.
+    use_lag_range
+        Extra lag range to use in addition to allowed lag values.
+    """
+
     def __init__(
         self,
-        id_col,
-        group_col,
-        date_col,
-        target_col,
-        date_frequency,
-        max_forecast_horizon,
-        model_horizon,
-        model,
-        categorical_cols=None,
-        use_lag_range=0,
-    ):
+        id_col: str,
+        group_col: str,
+        date_col: str,
+        target_col: str,
+        date_frequency: str,
+        max_forecast_horizon: int,
+        model_horizon: int,
+        model: sklearn.base.BaseEstimator,
+        categorical_cols: Optional[List[str]] = None,
+        use_lag_range: int = 0,
+    ) -> None:
         self.id_col = id_col
         self.group_col = group_col
         self.date_col = date_col
@@ -35,6 +67,11 @@ class ForecastFlowML:
         self.model_horizon = model_horizon
         self.use_lag_range = use_lag_range
         self.n_horizon = max_forecast_horizon // model_horizon
+
+    @property
+    def model_(self) -> pd.DataFrame:
+        """Trained models in pickled format"""
+        return self.model_
 
     def _filter_horizon(self, df, forecast_horizon):
         dates = df[self.date_col].sort_values().unique()
@@ -79,7 +116,7 @@ class ForecastFlowML:
         group_col = self.group_col
 
         @F.pandas_udf(
-            f"group string, data binary",
+            "group string, data binary",
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _serialize_udf(df):
@@ -89,7 +126,23 @@ class ForecastFlowML:
 
         return df.groupby(group_col).apply(_serialize_udf)
 
-    def feature_importance(self, df_model=None):
+    def get_feature_importance(
+        self,
+        df_model: Optional[pyspark.sql.DataFrame] = None,
+    ) -> pd.DataFrame:
+        """The feature importances.
+
+        Parameters
+        ----------
+        df_model
+            pyspark DataFrame that contains the trained models. Only needs to be
+            supplied if ``local_result`` is set to ``False`` during training.
+
+        Returns
+        -------
+            DataFrame that includes the feature importances.
+        """
+
         def _feature_importance_udf(df):
             group = df["group"].iloc[0]
 
@@ -130,7 +183,29 @@ class ForecastFlowML:
                 .reset_index(drop=True)
             )
 
-    def train(self, df, spark=None, local_result=False):
+    def train(
+        self,
+        df: Union[pd.DataFrame, pyspark.sql.DataFrame],
+        spark: Optional[SparkSession] = None,
+        local_result: bool = False,
+    ) -> Union[None, pd.DataFrame]:
+        """Train models
+
+        Parameters
+        ----------
+        df
+            Dataset to fit.
+        spark
+            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
+        local_result
+            Whether to store trained models as attribute. Only provide ``True``
+            in case of the trained models are not expected to overload the driver node.
+
+        Returns
+        -------
+            None if ``df`` is pandas DataFrame or ``local_result=True``. Otherwise, pyspark DataFrame that includes the trained models.
+        """
+
         group_col = self.group_col
         target_col = self.target_col
         model = self.model
@@ -154,7 +229,6 @@ class ForecastFlowML:
             model_list = []
             forecast_horizon_list = []
             for i in range(self.n_horizon):
-
                 forecast_horizon = self._forecast_horizon(i)
                 features = self._filter_features(df, forecast_horizon)
 
@@ -197,12 +271,34 @@ class ForecastFlowML:
     def cross_validate(
         self,
         df,
-        n_cv_splits=3,
-        max_train_size=None,
-        cv_step_length=None,
-        refit=True,
-        spark=None,
-    ):
+        n_cv_splits: int = 3,
+        max_train_size: Optional[int] = None,
+        cv_step_length: Optional[int] = None,
+        refit: bool = True,
+        spark: Optional[SparkSession] = None,
+    ) -> Union[pd.DataFrame, pyspark.sql.DataFrame]:
+        """Time series cross validation predictions
+
+        Parameters
+        ----------
+        df
+            Dataset to fit.
+        n_cv_splits
+            Number of cross validation folds.
+        max_train_size
+            Number of max periods to use as training set.
+        cv_step_length
+            Number of periods to put between each cv folds.
+        refit
+            Whether to refit model for each training dataset.
+        spark
+            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
+
+        Returns
+        -------
+            DataFrame that contains target and predictions over cross validation folds.
+        """
+
         id_col = self.id_col
         target_col = self.target_col
         date_col = self.date_col
@@ -224,18 +320,16 @@ class ForecastFlowML:
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _cross_validate_udf(df):
-
             df = self._convert_categorical(df)
             group = df[group_col].iloc[0]
             group_model = model[group] if isinstance(model, dict) else model
 
             cv_forecast_list = []
             for i in range(self.n_horizon):
-
                 forecast_horizon = self._forecast_horizon(i)
                 features = self._filter_features(df, forecast_horizon)
 
-                cv = TimeBasedSplit(
+                cv = _TimeBasedSplit(
                     date_col=date_col,
                     date_frequency=date_frequency,
                     n_splits=int(n_cv_splits),
@@ -245,7 +339,7 @@ class ForecastFlowML:
                     end_offset=int(max_forecast_horizon - int(max(forecast_horizon))),
                 ).split(df)
 
-                cv_forecast = cross_val_forecast(
+                cv_forecast = _cross_val_forecast(
                     model=group_model,
                     df=df,
                     id_col=id_col,
@@ -275,14 +369,39 @@ class ForecastFlowML:
 
     def grid_search(
         self,
-        df,
-        param_grid,
-        cv_step_length=None,
-        n_cv_splits=3,
-        scoring_metric="neg_mean_squared_error",
-        refit=True,
-        spark=None,
-    ):
+        df: Union[pd.DataFrame, pyspark.sql.DataFrame],
+        param_grid: Dict[str, List[Union[str, float, int]]],
+        n_cv_splits: int = 3,
+        cv_step_length: Optional[int] = None,
+        scoring_metric: str = "neg_mean_squared_error",
+        refit: bool = True,
+        spark: Optional[SparkSession] = None,
+    ) -> pd.DataFrame:
+        """Grid search with time series cross validation.
+
+        Parameters
+        ----------
+        df
+            Dataset to fit.
+        param_grid
+            Dictionary with parameters as keys and lists of parameter settings
+            to try as values.
+        n_cv_splits
+            Number of cross validation folds.
+        cv_step_length
+            Number of periods to put between each cv folds.
+        scoring_metric
+            ``scikit-learn`` scoring metric.
+            See list of available metrics: https://scikit-learn.org/stable/modules/model_evaluation.html.
+        refit
+            Whether to refit model for each training dataset.
+        spark
+            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
+
+        Returns
+        -------
+            DataFrame that includes score per parameter combination.
+        """
         group_col = self.group_col
         id_col = self.id_col
         model = self.model
@@ -309,7 +428,6 @@ class ForecastFlowML:
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _grid_search_udf(df):
-
             df = self._convert_categorical(df)
             group = df[group_col].iloc[0]
             hyperparams = df[list(param_grid.keys())].iloc[0].to_dict()
@@ -317,11 +435,10 @@ class ForecastFlowML:
 
             cv_forecast_list = []
             for i in range(self.n_horizon):
-
                 forecast_horizon = self._forecast_horizon(i)
                 features = self._filter_features(df, forecast_horizon)
 
-                cv = TimeBasedSplit(
+                cv = _TimeBasedSplit(
                     date_col=date_col,
                     date_frequency=date_frequency,
                     n_splits=int(n_cv_splits),
@@ -330,7 +447,7 @@ class ForecastFlowML:
                     end_offset=int(max_forecast_horizon - int(max(forecast_horizon))),
                 ).split(df)
 
-                cv_forecast = cross_val_forecast(
+                cv_forecast = _cross_val_forecast(
                     model=group_model,
                     df=df,
                     id_col=id_col,
@@ -345,7 +462,9 @@ class ForecastFlowML:
             cv_forecast = pd.concat(cv_forecast_list)
             score = (
                 cv_forecast.groupby("cv")
-                .apply(lambda x: score_func(x["target"], x["forecast"], scoring_metric))
+                .apply(
+                    lambda x: _score_func(x["target"], x["forecast"], scoring_metric)
+                )
                 .mean()
             )
 
@@ -378,7 +497,6 @@ class ForecastFlowML:
         )
 
     def _predict_grid(self, df, trained_models):
-
         df = self._serialize(df)
         df = df.join(
             trained_models.select("group", "forecast_horizon", "model"),
@@ -387,7 +505,29 @@ class ForecastFlowML:
         )
         return df
 
-    def predict(self, df, trained_models=None, spark=None):
+    def predict(
+        self,
+        df: pd.DataFrame,
+        trained_models=None,
+        spark=None,
+    ) -> Union[pd.DataFrame, pyspark.sql.DataFrame]:
+        """Make predictions
+
+        Parameters
+        ----------
+        df
+            Dataset to perform predictions on.
+        trained_models
+            pyspark DataFrame that contains the trained models.
+            Does not need to be provided in case ``local_result``
+            is set to ``True`` during training.
+        spark
+            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
+
+        Returns
+        -------
+            DataFrame that contains predictions per time series.
+        """
         id_col = self.id_col
         date_col = self.date_col
         input_type = _check_input_type(df)
@@ -395,11 +535,10 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         @F.pandas_udf(
-            f"id string, date date, prediction float",
+            "id string, date date, prediction float",
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _predict_udf(df):
-
             data = pickle.loads(df["data"].iloc[0])
             data = self._convert_categorical(data)
             forecast_horizon_list = df["forecast_horizon"].iloc[0]
@@ -407,7 +546,6 @@ class ForecastFlowML:
 
             result_list = []
             for i in range(self.n_horizon):
-
                 forecast_horizon = forecast_horizon_list[i]
                 features = self._filter_features(data, forecast_horizon)
                 model_data = self._filter_horizon(data, forecast_horizon)
