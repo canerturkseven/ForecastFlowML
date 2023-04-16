@@ -10,3 +10,5 @@ docs/build/
 docs/jupyter_execute/
 *.pickle
 docs/source/_autosummary
+.coverage
+htmlcov
