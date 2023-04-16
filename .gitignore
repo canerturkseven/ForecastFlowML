@@ -11,4 +11,5 @@ docs/jupyter_execute/
 *.pickle
 docs/source/_autosummary
 .coverage
+coverage.xml
 htmlcov
