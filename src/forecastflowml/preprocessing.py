@@ -21,7 +21,7 @@ def _lag_window_summarizer(df, id_col, target_col, date_col, features):
                 df = df.withColumn(f"lag_{lag}", F.lag(target_col, lag).over(w1))
         else:
             for window, lag in values:
-                w2 = w1.rowsBetween(-(lag + window), -lag)
+                w2 = w1.rowsBetween(-(lag + window - 1), -lag)
                 df = df.withColumn(
                     f"window_{window}_lag_{lag}_{key}",
                     F.expr(f"{key}({target_col})").over(w2),
