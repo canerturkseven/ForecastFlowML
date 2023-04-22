@@ -11,43 +11,34 @@ def _score_func(y_true, y_pred, metric):
     )
 
 
-def _cross_val_forecast(
+def _cross_val_predict(
     *,
-    model,
+    forecaster,
     df,
-    id_col,
-    feature_cols,
-    date_col,
-    target_col,
     cv,
     refit,
 ):
-    forecast = []
 
-    initial_train_idx = cv[-1][0]
-    model = model.fit(
-        df.loc[initial_train_idx, feature_cols], df.loc[initial_train_idx, target_col]
-    )
-
+    cv_predictions_list = []
     for i, fold in enumerate(cv):
+
         train_idx, test_idx = fold[0], fold[1]
-        df_train, df_test = df.iloc[train_idx], df.copy().iloc[test_idx]
+        df_train, df_test = df.iloc[train_idx], df.iloc[test_idx]
 
-        if refit:
-            model = model.fit(df_train[feature_cols], df_train[target_col])
+        if refit or i == 0:
+            forecaster = forecaster.fit(df_train)
 
-        df_test["forecast"] = model.predict(df_test[feature_cols])
-        df_test["cv"] = str(i)
+        prediction = forecaster.predict(df_test)
+        prediction["cv"] = str(i)
+        prediction["target"] = df_test[forecaster.target_col].values
+        cv_predictions_list.append(prediction)
 
-        forecast.append(df_test[[id_col, date_col, "cv", target_col, "forecast"]])
+    cv_predictions = pd.concat(cv_predictions_list).reset_index(drop=True)
+    cv_predictions = cv_predictions[
+        ["group", "id", "date", "cv", "target", "prediction"]
+    ]
 
-    cv_forecast = (
-        pd.concat(forecast)
-        .reset_index(drop=True)
-        .rename(columns={id_col: "id", date_col: "date", target_col: "target"})
-    )
-
-    return cv_forecast
+    return cv_predictions
 
 
 class _TimeBasedSplit:

@@ -1,5 +1,4 @@
 import pickle
-import re
 import datetime
 import sklearn
 import pyspark
@@ -7,11 +6,12 @@ import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from forecastflowml.model_selection import (
-    _cross_val_forecast,
+    _cross_val_predict,
     _score_func,
     _TimeBasedSplit,
 )
 from forecastflowml.utils import _check_input_type, _check_spark, _check_fitted
+from forecastflowml.direct_forecaster import _DirectForecaster
 from typing import List, Optional, Union, Dict
 
 
@@ -83,45 +83,6 @@ class ForecastFlowML:
             pandas DataFrame containing trained models
         """
         self._model_ = value
-
-    def _filter_horizon(self, df, forecast_horizon):
-        dates = df[self.date_col].sort_values().unique()
-        forecast_dates = dates[[fh - 1 for fh in forecast_horizon]]
-        return df[df[self.date_col].isin(forecast_dates)]
-
-    def _filter_features(self, df, forecast_horizon):
-        min_lag = max(forecast_horizon)
-        lag_range = self.use_lag_range
-        feature_cols = [
-            col
-            for col in df.select_dtypes(["number", "category"]).columns
-            if col not in [self.id_col, self.group_col, self.date_col, self.target_col]
-        ]
-        lag_cols = [
-            col
-            for col in feature_cols
-            if re.findall("(^|_)lag(_|$)", col, re.IGNORECASE)
-        ]
-        keep_lags_str = "|".join(map(str, range(min_lag, min_lag + lag_range + 1)))
-        keep_lags = [
-            col
-            for col in lag_cols
-            if re.findall(
-                f"^lag_({keep_lags_str})$|(^|_)lag_{min_lag}(_|$)", col, re.IGNORECASE
-            )
-        ]
-        features = list(set(feature_cols) - set(lag_cols)) + keep_lags
-        return features
-
-    def _forecast_horizon(self, i):
-        model_horizon = self.model_horizon
-        return list(range(i * model_horizon + 1, (i + 1) * model_horizon + 1))
-
-    def _convert_categorical(self, df):
-        categorical_cols = self.categorical_cols
-        if categorical_cols is not None:
-            df[categorical_cols] = df[categorical_cols].astype("category")
-        return df
 
     def _serialize(self, df):
         group_col = self.group_col
@@ -214,9 +175,14 @@ class ForecastFlowML:
         -------
             None if ``df`` is pandas DataFrame or ``local_result=True``. Otherwise, pyspark DataFrame that includes the trained models.
         """
-
+        id_col = self.id_col
+        date_col = self.date_col
+        categorical_cols = self.categorical_cols
+        model_horizon = self.model_horizon
+        n_horizon = self.n_horizon
         group_col = self.group_col
         target_col = self.target_col
+        use_lag_range = self.use_lag_range
         model = self.model
         input_type = _check_input_type(df)
         _check_spark(self, input_type, spark)
@@ -229,23 +195,21 @@ class ForecastFlowML:
         def _train_udf(df):
             start = datetime.datetime.now()
 
-            df = self._convert_categorical(df)
             group = df[group_col].iloc[0]
             group_model = model[group] if isinstance(model, dict) else model
 
-            model_list = []
-            forecast_horizon_list = []
-            for i in range(self.n_horizon):
-                forecast_horizon = self._forecast_horizon(i)
-                features = self._filter_features(df, forecast_horizon)
-
-                X = df[features]
-                y = df[target_col]
-
-                group_model.fit(X, y)
-
-                forecast_horizon_list.append(forecast_horizon)
-                model_list.append(pickle.dumps(group_model))
+            forecaster = _DirectForecaster(
+                id_col=id_col,
+                group_col=group_col,
+                date_col=date_col,
+                target_col=target_col,
+                categorical_cols=categorical_cols,
+                model=group_model,
+                model_horizon=model_horizon,
+                n_horizon=n_horizon,
+                use_lag_range=use_lag_range,
+            )
+            forecaster.fit(df)
 
             end = datetime.datetime.now()
             elapsed = end - start
@@ -255,8 +219,8 @@ class ForecastFlowML:
                 [
                     {
                         "group": group,
-                        "forecast_horizon": forecast_horizon_list,
-                        "model": model_list,
+                        "forecast_horizon": [list(x) for x in forecaster.model_.keys()],
+                        "model": [pickle.dumps(x) for x in forecaster.model_.values()],
                         "start_time": start.strftime("%d-%b-%Y (%H:%M:%S)"),
                         "end_time": end.strftime("%d-%b-%Y (%H:%M:%S)"),
                         "elapsed_seconds": seconds,
@@ -308,10 +272,14 @@ class ForecastFlowML:
 
         id_col = self.id_col
         target_col = self.target_col
+        categorical_cols = self.categorical_cols
+        model_horizon = self.model_horizon
+        n_horizon = self.n_horizon
         date_col = self.date_col
         date_frequency = self.date_frequency
         max_forecast_horizon = self.max_forecast_horizon
         group_col = self.group_col
+        use_lag_range = self.use_lag_range
         model = self.model
         cv_step_length = (
             max_forecast_horizon if cv_step_length is None else cv_step_length
@@ -321,45 +289,43 @@ class ForecastFlowML:
 
         @F.pandas_udf(
             "group string, id string, date date, cv string,"
-            "target float, forecast float",
+            "target float, prediction float",
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _cross_validate_udf(df):
-            df = self._convert_categorical(df)
+
             group = df[group_col].iloc[0]
             group_model = model[group] if isinstance(model, dict) else model
 
-            cv_forecast_list = []
-            for i in range(self.n_horizon):
-                forecast_horizon = self._forecast_horizon(i)
-                features = self._filter_features(df, forecast_horizon)
+            forecaster = _DirectForecaster(
+                id_col=id_col,
+                group_col=group_col,
+                date_col=date_col,
+                target_col=target_col,
+                categorical_cols=categorical_cols,
+                model=group_model,
+                model_horizon=model_horizon,
+                n_horizon=n_horizon,
+                use_lag_range=use_lag_range,
+            )
 
-                cv = _TimeBasedSplit(
-                    date_col=date_col,
-                    date_frequency=date_frequency,
-                    n_splits=int(n_cv_splits),
-                    forecast_horizon=list(forecast_horizon),
-                    step_length=int(cv_step_length),
-                    max_train_size=max_train_size,
-                    end_offset=int(max_forecast_horizon - int(max(forecast_horizon))),
-                ).split(df)
+            cv = _TimeBasedSplit(
+                date_col=date_col,
+                date_frequency=date_frequency,
+                n_splits=int(n_cv_splits),
+                forecast_horizon=list(range(1, max_forecast_horizon + 1)),
+                step_length=int(cv_step_length),
+                max_train_size=max_train_size,
+            ).split(df)
 
-                cv_forecast = _cross_val_forecast(
-                    model=group_model,
-                    df=df,
-                    id_col=id_col,
-                    feature_cols=features,
-                    date_col=date_col,
-                    target_col=target_col,
-                    cv=cv,
-                    refit=refit,
-                )
-                cv_forecast_list.append(cv_forecast)
+            cv_predictions = _cross_val_predict(
+                forecaster=forecaster,
+                df=df,
+                cv=cv,
+                refit=refit,
+            )
 
-            cv_forecast = pd.concat(cv_forecast_list).reset_index(drop=True)
-            cv_forecast.insert(0, "group", group)
-
-            return cv_forecast
+            return cv_predictions
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
         cv_result = (
@@ -377,6 +343,7 @@ class ForecastFlowML:
         df: Union[pd.DataFrame, pyspark.sql.DataFrame],
         param_grid: Dict[str, List[Union[str, float, int]]],
         n_cv_splits: int = 3,
+        max_train_size: Optional[int] = None,
         cv_step_length: Optional[int] = None,
         scoring_metric: str = "neg_mean_squared_error",
         refit: bool = True,
@@ -393,6 +360,8 @@ class ForecastFlowML:
             to try as values.
         n_cv_splits
             Number of cross validation folds.
+        max_train_size
+            Number of max periods to use as training set.
         cv_step_length
             Number of periods to put between each cv folds.
         scoring_metric
@@ -413,6 +382,10 @@ class ForecastFlowML:
         target_col = self.target_col
         date_col = self.date_col
         date_frequency = self.date_frequency
+        categorical_cols = self.categorical_cols
+        model_horizon = self.model_horizon
+        n_horizon = self.n_horizon
+        use_lag_range = self.use_lag_range
         max_forecast_horizon = self.max_forecast_horizon
         cv_step_length = (
             max_forecast_horizon if cv_step_length is None else cv_step_length
@@ -433,42 +406,43 @@ class ForecastFlowML:
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _grid_search_udf(df):
-            df = self._convert_categorical(df)
             group = df[group_col].iloc[0]
-            hyperparams = df[list(param_grid.keys())].iloc[0].to_dict()
+            group_model = model[group] if isinstance(model, dict) else model
+            hyperparams = {param: df[param].iloc[0] for param in param_grid.keys()}
             group_model = model.set_params(**hyperparams)
 
-            cv_forecast_list = []
-            for i in range(self.n_horizon):
-                forecast_horizon = self._forecast_horizon(i)
-                features = self._filter_features(df, forecast_horizon)
+            forecaster = _DirectForecaster(
+                id_col=id_col,
+                group_col=group_col,
+                date_col=date_col,
+                target_col=target_col,
+                categorical_cols=categorical_cols,
+                model=group_model,
+                model_horizon=model_horizon,
+                n_horizon=n_horizon,
+                use_lag_range=use_lag_range,
+            )
 
-                cv = _TimeBasedSplit(
-                    date_col=date_col,
-                    date_frequency=date_frequency,
-                    n_splits=int(n_cv_splits),
-                    forecast_horizon=list(forecast_horizon),
-                    step_length=int(cv_step_length),
-                    end_offset=int(max_forecast_horizon - int(max(forecast_horizon))),
-                ).split(df)
+            cv = _TimeBasedSplit(
+                date_col=date_col,
+                date_frequency=date_frequency,
+                n_splits=int(n_cv_splits),
+                forecast_horizon=list(range(1, max_forecast_horizon + 1)),
+                step_length=int(cv_step_length),
+                max_train_size=max_train_size,
+            ).split(df)
 
-                cv_forecast = _cross_val_forecast(
-                    model=group_model,
-                    df=df,
-                    id_col=id_col,
-                    feature_cols=features,
-                    date_col=date_col,
-                    target_col=target_col,
-                    cv=cv,
-                    refit=refit,
-                )
-                cv_forecast_list.append(cv_forecast)
+            cv_predictions = _cross_val_predict(
+                forecaster=forecaster,
+                df=df,
+                cv=cv,
+                refit=refit,
+            )
 
-            cv_forecast = pd.concat(cv_forecast_list)
             score = (
-                cv_forecast.groupby("cv")
+                cv_predictions.groupby("cv")
                 .apply(
-                    lambda x: _score_func(x["target"], x["forecast"], scoring_metric)
+                    lambda x: _score_func(x["target"], x["prediction"], scoring_metric)
                 )
                 .mean()
             )
@@ -534,35 +508,44 @@ class ForecastFlowML:
             DataFrame that contains predictions per time series.
         """
         id_col = self.id_col
+        group_col = self.group_col
         date_col = self.date_col
+        target_col = self.target_col
+        categorical_cols = self.categorical_cols
+        model = self.model
+        model_horizon = self.model_horizon
+        n_horizon = self.n_horizon
+        use_lag_range = self.use_lag_range
         input_type = _check_input_type(df)
         _check_fitted(self, trained_models, spark)
         _check_spark(self, input_type, spark)
 
         @F.pandas_udf(
-            "id string, date date, prediction float",
+            "group string, id string, date date, prediction float",
             functionType=F.PandasUDFType.GROUPED_MAP,
         )
         def _predict_udf(df):
             data = pickle.loads(df["data"].iloc[0])
-            data = self._convert_categorical(data)
-            forecast_horizon_list = df["forecast_horizon"].iloc[0]
-            model_list = df["model"].iloc[0]
 
-            result_list = []
-            for i in range(self.n_horizon):
-                forecast_horizon = forecast_horizon_list[i]
-                features = self._filter_features(data, forecast_horizon)
-                model_data = self._filter_horizon(data, forecast_horizon)
+            forecast_horizon_list = list(map(tuple, df["forecast_horizon"].iloc[0]))
+            model_list = list(map(pickle.loads, df["model"].iloc[0]))
+            model_ = {fh: model for fh, model in zip(forecast_horizon_list, model_list)}
 
-                model = pickle.loads(model_list[i])
-                model_data["prediction"] = model.predict(model_data[features])
+            forecaster = _DirectForecaster(
+                id_col=id_col,
+                group_col=group_col,
+                date_col=date_col,
+                target_col=target_col,
+                categorical_cols=categorical_cols,
+                model=model,
+                model_horizon=model_horizon,
+                n_horizon=n_horizon,
+                use_lag_range=use_lag_range,
+            )
+            forecaster.model_ = model_
+            prediction = forecaster.predict(data)
 
-                result_list.append(model_data)
-
-            result = pd.concat(result_list).reset_index()
-
-            return result[[id_col, date_col, "prediction"]]
+            return prediction
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
         df = df.withColumn("date", F.to_timestamp("date"))
