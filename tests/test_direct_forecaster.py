@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+from datetime import date
 from forecastflowml import FeatureExtractor
 from forecastflowml.direct_forecaster import _DirectForecaster
 from lightgbm import LGBMRegressor
@@ -9,32 +10,26 @@ from sklearn.linear_model import LinearRegression
 
 
 @pytest.fixture(scope="module")
-def spark():
+def df():
     spark = (
         SparkSession.builder.master("local[1]")
         .config("spark.sql.shuffle.partitions", 1)
         .getOrCreate()
     )
-    yield spark
-    spark.stop()
-
-
-@pytest.fixture(scope="module")
-def df(spark):
     df = pd.DataFrame(
         data=[
-            ("0", "0", "2023-01-01", 5, "a", 3),
-            ("0", "0", "2023-01-02", 2, "a", 5),
-            ("0", "0", "2023-01-03", 0, "a", 3),
-            ("0", "0", "2023-01-04", 4, "a", 6),
-            ("0", "0", "2023-01-05", 3, "a", 2),
-            ("0", "0", "2023-01-06", 3, "a", 1),
-            ("0", "1", "2023-01-01", 7, "b", 1),
-            ("0", "1", "2023-01-02", 8, "b", 3),
-            ("0", "1", "2023-01-03", 0, "b", 5),
-            ("0", "1", "2023-01-04", 0, "b", 7),
-            ("0", "1", "2023-01-05", 2, "b", 2),
-            ("0", "1", "2023-01-06", 2, "b", 2),
+            ("0", "0", date(2023, 1, 1), 5, "a", 3),
+            ("0", "0", date(2023, 1, 2), 2, "a", 5),
+            ("0", "0", date(2023, 1, 3), 0, "a", 3),
+            ("0", "0", date(2023, 1, 4), 4, "a", 6),
+            ("0", "0", date(2023, 1, 5), 3, "a", 2),
+            ("0", "0", date(2023, 1, 6), 3, "a", 1),
+            ("0", "1", date(2023, 1, 1), 7, "b", 1),
+            ("0", "1", date(2023, 1, 2), 8, "b", 3),
+            ("0", "1", date(2023, 1, 3), 0, "b", 5),
+            ("0", "1", date(2023, 1, 4), 0, "b", 7),
+            ("0", "1", date(2023, 1, 5), 2, "b", 2),
+            ("0", "1", date(2023, 1, 6), 2, "b", 2),
         ],
         columns=[
             "group",
@@ -45,7 +40,7 @@ def df(spark):
             "target",
         ],
     )
-    df["date"] = pd.to_datetime(df["date"], format='%Y-%m-%d')
+    df["date"] = pd.to_datetime(df["date"])
     feature_extractor = FeatureExtractor(
         id_col="id",
         date_col="date",
@@ -57,6 +52,7 @@ def df(spark):
         count_consecutive_values={"value": 0, "lags": [1, 2]},
     )
     df = feature_extractor.transform(df, spark=spark)
+    spark.stop()
     df_train = df[df["date"] < "2023-01-05"]
     df_test = df[df["date"] >= "2023-01-05"]
     return df_train, df_test
