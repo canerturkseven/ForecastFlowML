@@ -85,30 +85,6 @@ class ForecastFlowML:
         """
         self._model_ = value
 
-    def _serialize(self, df):
-        group_col = self.group_col
-
-        def _serialize_udf(df):
-            return pd.DataFrame(
-                [
-                    {
-                        "group": df[group_col].iloc[0],
-                        "data": str(pickle.dumps(df), "latin1"),
-                    }
-                ]
-            )
-
-        schema = "group:string, data:string"
-        if pyspark.__version__ < "3":
-            pandas_udf = F.pandas_udf(
-                _serialize_udf,
-                schema=schema,
-                functionType=F.PandasUDFType.GROUPED_MAP,
-            )
-            return df.groupby("group").apply(pandas_udf)
-        else:
-            return df.groupby("group").applyInPandas(_serialize_udf, schema=schema)
-
     def get_feature_importance(
         self,
         df_model: Optional[pyspark.sql.DataFrame] = None,
@@ -521,6 +497,30 @@ class ForecastFlowML:
             .reset_index(drop=True)
         )
 
+    def _serialize(self, df):
+        group_col = self.group_col
+
+        def _serialize_udf(df):
+            return pd.DataFrame(
+                [
+                    {
+                        "group": df[group_col].iloc[0],
+                        "data": str(pickle.dumps(df), "latin1"),
+                    }
+                ]
+            )
+
+        schema = "group:string, data:string"
+        if pyspark.__version__ < "3":
+            pandas_udf = F.pandas_udf(
+                _serialize_udf,
+                schema=schema,
+                functionType=F.PandasUDFType.GROUPED_MAP,
+            )
+            return df.groupby(group_col).apply(pandas_udf)
+        else:
+            return df.groupby(group_col).applyInPandas(_serialize_udf, schema=schema)
+
     def _predict_grid(self, df, trained_models):
         df = self._serialize(df)
         df = df.join(
@@ -571,7 +571,6 @@ class ForecastFlowML:
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             data = pickle.loads(bytes(df["data"].iloc[0], "latin1"))
-
             forecast_horizon_list = list(map(tuple, df["forecast_horizon"].iloc[0]))
             model_list = [pickle.loads(bytes(m, "latin1")) for m in df["model"].iloc[0]]
             model_ = {fh: model for fh, model in zip(forecast_horizon_list, model_list)}
@@ -607,11 +606,9 @@ class ForecastFlowML:
             pandas_udf = F.pandas_udf(
                 _predict_udf, schema=schema, functionType=F.PandasUDFType.GROUPED_MAP
             )
-            predictions = df.groupby(group_col).apply(pandas_udf)
+            predictions = df.groupby("group").apply(pandas_udf)
         else:
-            predictions = df.groupby(group_col).applyInPandas(
-                _predict_udf, schema=schema
-            )
+            predictions = df.groupby("group").applyInPandas(_predict_udf, schema=schema)
 
         if input_type == "df_pandas":
             return predictions.toPandas()
