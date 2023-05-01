@@ -3,7 +3,6 @@ import pickle
 import datetime
 import sklearn
 import pyspark
-import pyarrow
 import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
@@ -103,7 +102,7 @@ class ForecastFlowML:
         """
 
         def _feature_importance_udf(df):
-            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+            if pyspark.__version__ <= "2.4":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             group = df["group"].iloc[0]
@@ -189,7 +188,7 @@ class ForecastFlowML:
 
         def _train_udf(df):
             # Ensure pyarrow compatibility with old versions
-            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+            if pyspark.__version__ <= "2.4":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             start = datetime.datetime.now()
@@ -296,7 +295,7 @@ class ForecastFlowML:
 
         def _cross_validate_udf(df):
             # Ensure pyarrow compatibility with old versions
-            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+            if pyspark.__version__ <= "2.4":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             forecaster = _DirectForecaster(
@@ -409,7 +408,7 @@ class ForecastFlowML:
 
         def _grid_search_udf(df):
             # Ensure pyarrow compatibility with old versions
-            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+            if pyspark.__version__ <= "2.4":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             group = df[group_col].iloc[0]
@@ -563,7 +562,7 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         def _predict_udf(df):
-            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+            if pyspark.__version__ <= "2.4":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             data = pickle.loads(bytes(df["data"].iloc[0], "latin1"))
