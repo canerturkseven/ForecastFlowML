@@ -45,7 +45,7 @@ def df(spark):
             "target",
         ],
     )
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"], format='%Y-%m-%d')
     feature_extractor = FeatureExtractor(
         id_col="id",
         date_col="date",
