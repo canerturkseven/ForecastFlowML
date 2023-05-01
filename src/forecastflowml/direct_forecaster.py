@@ -1,4 +1,5 @@
 import re
+import copy
 import pandas as pd
 
 
@@ -9,11 +10,11 @@ class _DirectForecaster:
         group_col,
         date_col,
         target_col,
-        categorical_cols,
         model,
         model_horizon,
-        n_horizon,
-        use_lag_range,
+        max_forecast_horizon,
+        categorical_cols=None,
+        use_lag_range=0,
     ):
         self.id_col = id_col
         self.group_col = group_col
@@ -22,8 +23,8 @@ class _DirectForecaster:
         self.categorical_cols = categorical_cols
         self.model = model
         self.model_horizon = model_horizon
-        self.n_horizon = n_horizon
         self.use_lag_range = use_lag_range
+        self.n_horizon = max_forecast_horizon // model_horizon
 
     def _convert_categorical(self, df):
         categorical_cols = self.categorical_cols
@@ -34,7 +35,7 @@ class _DirectForecaster:
     def _filter_horizon(self, df, forecast_horizon):
         dates = df[self.date_col].sort_values().unique()
         forecast_dates = dates[[fh - 1 for fh in forecast_horizon]]
-        return df[df[self.date_col].isin(forecast_dates)]
+        return df[df[self.date_col].isin(forecast_dates)].copy()
 
     def _forecast_horizon(self, i):
         model_horizon = self.model_horizon
@@ -51,45 +52,46 @@ class _DirectForecaster:
         lag_cols = [
             col
             for col in feature_cols
-            if re.findall("(^|_)lag(_|$)", col, re.IGNORECASE)
+            if re.findall("(^|_)lag_\d+(_|$)", col, re.IGNORECASE)
         ]
         keep_lags_str = "|".join(map(str, range(min_lag, min_lag + lag_range + 1)))
         keep_lags = [
             col
             for col in lag_cols
             if re.findall(
-                f"^lag_({keep_lags_str})$|(^|_)lag_{min_lag}(_|$)", col, re.IGNORECASE
+                f"^lag_({keep_lags_str})$|_lag_{min_lag}(_|$)", col, re.IGNORECASE
             )
         ]
         features = list(set(feature_cols) - set(lag_cols)) + keep_lags
         return features
 
     def fit(self, df):
+        df = df.copy()
         df = self._convert_categorical(df)
         group = df[self.group_col].iloc[0]
         group_model = self.model[group] if isinstance(self.model, dict) else self.model
 
         self.model_ = {}
         for i in range(self.n_horizon):
-
             forecast_horizon = self._forecast_horizon(i)
             features = self._filter_features(df, forecast_horizon)
 
             X = df[features]
             y = df[self.target_col]
 
-            group_model.fit(X, y)
-            self.model_[forecast_horizon] = group_model
+            horizon_model = copy.deepcopy(group_model)
+            horizon_model.fit(X, y)
+            self.model_[forecast_horizon] = horizon_model
 
         return self
 
     def predict(self, df):
+        df = df.copy()
         df = self._convert_categorical(df)
         group = df[self.group_col].iloc[0]
 
         result_list = []
         for forecast_horizon, model in self.model_.items():
-
             features = self._filter_features(df, forecast_horizon)
             model_data = self._filter_horizon(df, forecast_horizon)
 
