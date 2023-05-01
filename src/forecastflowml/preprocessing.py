@@ -36,13 +36,13 @@ def _count_consecutive_values(df, id_col, value_col, date_col, value, lags):
         .rowsBetween(Window.unboundedPreceding, 0)
     )
     w2 = (
-        Window.partitionBy(id_col, "group")
+        Window.partitionBy(id_col, "value_group")
         .orderBy(date_col)
         .rowsBetween(Window.unboundedPreceding, 0)
     )
     df = (
         df.withColumn("mask", F.when(F.col(value_col) == value, 1).otherwise(0))
-        .withColumn("group", F.sum(1 - F.col("mask")).over(w1))
+        .withColumn("value_group", F.sum(1 - F.col("mask")).over(w1))
         .withColumn("count", F.sum("mask").over(w2))
     )
 
@@ -50,7 +50,7 @@ def _count_consecutive_values(df, id_col, value_col, date_col, value, lags):
     for lag in lags:
         output_col = f"count_consecutive_value_lag_{lag}"
         df = df.withColumn(output_col, F.lag("count", lag).over(w3))
-    df = df.drop("mask", "group", "count")
+    df = df.drop("mask", "value_group", "count")
     return df
 
 
