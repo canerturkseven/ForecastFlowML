@@ -1,4 +1,5 @@
 import pytest
+import pandas as pd
 from datetime import date
 from pyspark.sql import SparkSession
 from forecastflowml import FeatureExtractor
@@ -340,7 +341,6 @@ def test_count_consecutive_values(
     ],
 )
 def test_date_features(
-    df_input,
     spark,
     feature,
     input_data,
@@ -358,3 +358,14 @@ def test_date_features(
     )
     df_result = model.transform(df_input)
     assert df_result.collect() == df_expected.collect()
+
+
+def test_pandas_dataframe(df_input, spark):
+    model = FeatureExtractor(
+        id_col="id",
+        date_col="date",
+        target_col="target",
+        lag_window_features={"lag": [1]},
+    )
+    df_result = model.transform(df_input.toPandas(), spark=spark)
+    assert isinstance(df_result, pd.DataFrame)
