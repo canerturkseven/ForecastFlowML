@@ -18,10 +18,8 @@ def _cross_val_predict(
     cv,
     refit,
 ):
-
     cv_predictions_list = []
     for i, fold in enumerate(cv):
-
         train_idx, test_idx = fold[0], fold[1]
         df_train, df_test = df.iloc[train_idx], df.iloc[test_idx]
 
