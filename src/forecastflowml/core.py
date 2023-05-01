@@ -1,7 +1,9 @@
+import os
 import pickle
 import datetime
 import sklearn
 import pyspark
+import pyarrow
 import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
@@ -66,7 +68,6 @@ class ForecastFlowML:
         self.max_forecast_horizon = max_forecast_horizon
         self.model_horizon = model_horizon
         self.use_lag_range = use_lag_range
-        self.n_horizon = max_forecast_horizon // model_horizon
 
     @property
     def model_(self) -> pd.DataFrame:
@@ -87,16 +88,26 @@ class ForecastFlowML:
     def _serialize(self, df):
         group_col = self.group_col
 
-        @F.pandas_udf(
-            "group string, data binary",
-            functionType=F.PandasUDFType.GROUPED_MAP,
-        )
         def _serialize_udf(df):
             return pd.DataFrame(
-                [{"group": df[group_col].iloc[0], "data": pickle.dumps(df)}]
+                [
+                    {
+                        "group": df[group_col].iloc[0],
+                        "data": str(pickle.dumps(df), "latin1"),
+                    }
+                ]
             )
 
-        return df.groupby(group_col).apply(_serialize_udf)
+        schema = "group:string, data:string"
+        if pyspark.__version__ < "3":
+            pandas_udf = F.pandas_udf(
+                _serialize_udf,
+                schema=schema,
+                functionType=F.PandasUDFType.GROUPED_MAP,
+            )
+            return df.groupby("group").apply(pandas_udf)
+        else:
+            return df.groupby("group").applyInPandas(_serialize_udf, schema=schema)
 
     def get_feature_importance(
         self,
@@ -116,11 +127,15 @@ class ForecastFlowML:
         """
 
         def _feature_importance_udf(df):
+
+            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+                os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+
             group = df["group"].iloc[0]
 
             importance_list = []
             for i in range(len(df["model"].iloc[0])):
-                model = pickle.loads(df["model"].iloc[0][i])
+                model = pickle.loads(bytes(df["model"].iloc[0][i], "latin1"))
                 forecast_horizon = df["forecast_horizon"].iloc[0][i]
 
                 importance = pd.DataFrame(
@@ -139,13 +154,23 @@ class ForecastFlowML:
             return df_importance
 
         if df_model is not None:
-            pandas_udf = F.pandas_udf(
-                _feature_importance_udf,
+            schema = (
                 "group:string, forecast_horizon:array<int>, "
-                "feature:string, importance:float",
-                functionType=F.PandasUDFType.GROUPED_MAP,
+                "feature:string, importance:float"
             )
-            return df_model.groupby("group").apply(pandas_udf).toPandas()
+            if pyspark.__version__ < "3":
+                pandas_udf = F.pandas_udf(
+                    _feature_importance_udf,
+                    schema=schema,
+                    functionType=F.PandasUDFType.GROUPED_MAP,
+                )
+                return df_model.groupby("group").apply(pandas_udf).toPandas()
+            else:
+                return (
+                    df_model.groupby("group")
+                    .applyInPandas(_feature_importance_udf, schema=schema)
+                    .toPandas()
+                )
         else:
             return (
                 self.model_.groupby("group", group_keys=False)
@@ -179,24 +204,21 @@ class ForecastFlowML:
         date_col = self.date_col
         categorical_cols = self.categorical_cols
         model_horizon = self.model_horizon
-        n_horizon = self.n_horizon
         group_col = self.group_col
         target_col = self.target_col
+        max_forecast_horizon = self.max_forecast_horizon
         use_lag_range = self.use_lag_range
         model = self.model
         input_type = _check_input_type(df)
         _check_spark(self, input_type, spark)
 
-        @F.pandas_udf(
-            "group:string, forecast_horizon:array<array<int>>, model:array<binary>,"
-            "start_time:string, end_time:string, elapsed_seconds:float",
-            functionType=F.PandasUDFType.GROUPED_MAP,
-        )
         def _train_udf(df):
-            start = datetime.datetime.now()
 
-            group = df[group_col].iloc[0]
-            group_model = model[group] if isinstance(model, dict) else model
+            # Ensure pyarrow compatibility with old versions
+            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+                os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+
+            start = datetime.datetime.now()
 
             forecaster = _DirectForecaster(
                 id_col=id_col,
@@ -204,9 +226,9 @@ class ForecastFlowML:
                 date_col=date_col,
                 target_col=target_col,
                 categorical_cols=categorical_cols,
-                model=group_model,
+                model=model,
                 model_horizon=model_horizon,
-                n_horizon=n_horizon,
+                max_forecast_horizon=max_forecast_horizon,
                 use_lag_range=use_lag_range,
             )
             forecaster.fit(df)
@@ -218,9 +240,12 @@ class ForecastFlowML:
             return pd.DataFrame(
                 [
                     {
-                        "group": group,
+                        "group": df[group_col].iloc[0],
                         "forecast_horizon": [list(x) for x in forecaster.model_.keys()],
-                        "model": [pickle.dumps(x) for x in forecaster.model_.values()],
+                        "model": [
+                            str(pickle.dumps(x), "latin1")
+                            for x in forecaster.model_.values()
+                        ],
                         "start_time": start.strftime("%d-%b-%Y (%H:%M:%S)"),
                         "end_time": end.strftime("%d-%b-%Y (%H:%M:%S)"),
                         "elapsed_seconds": seconds,
@@ -229,11 +254,20 @@ class ForecastFlowML:
             )
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        model_ = (
-            df.withColumn("date", F.to_timestamp("date"))
-            .groupby(group_col)
-            .apply(_train_udf)
+        df = df.withColumn("date", F.to_timestamp("date"))
+
+        schema = (
+            "group:string, forecast_horizon:array<array<int>>, model:array<string>,"
+            "start_time:string, end_time:string, elapsed_seconds:float"
         )
+        if pyspark.__version__ < "3":
+            pandas_udf = F.pandas_udf(
+                _train_udf, schema=schema, functionType=F.PandasUDFType.GROUPED_MAP
+            )
+            model_ = df.groupby(group_col).apply(pandas_udf)
+        else:
+            model_ = df.groupby(group_col).applyInPandas(_train_udf, schema=schema)
+
         if (input_type == "df_pandas") | (local_result):
             self.model_ = model_.toPandas()
         else:
@@ -274,7 +308,6 @@ class ForecastFlowML:
         target_col = self.target_col
         categorical_cols = self.categorical_cols
         model_horizon = self.model_horizon
-        n_horizon = self.n_horizon
         date_col = self.date_col
         date_frequency = self.date_frequency
         max_forecast_horizon = self.max_forecast_horizon
@@ -287,15 +320,11 @@ class ForecastFlowML:
         input_type = _check_input_type(df)
         _check_spark(self, input_type, spark)
 
-        @F.pandas_udf(
-            "group string, id string, date date, cv string,"
-            "target float, prediction float",
-            functionType=F.PandasUDFType.GROUPED_MAP,
-        )
         def _cross_validate_udf(df):
 
-            group = df[group_col].iloc[0]
-            group_model = model[group] if isinstance(model, dict) else model
+            # Ensure pyarrow compatibility with old versions
+            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+                os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             forecaster = _DirectForecaster(
                 id_col=id_col,
@@ -303,9 +332,9 @@ class ForecastFlowML:
                 date_col=date_col,
                 target_col=target_col,
                 categorical_cols=categorical_cols,
-                model=group_model,
+                model=model,
                 model_horizon=model_horizon,
-                n_horizon=n_horizon,
+                max_forecast_horizon=max_forecast_horizon,
                 use_lag_range=use_lag_range,
             )
 
@@ -328,11 +357,24 @@ class ForecastFlowML:
             return cv_predictions
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        cv_result = (
-            df.withColumn("date", F.to_timestamp("date"))
-            .groupby(group_col)
-            .apply(_cross_validate_udf)
+        df = df.withColumn("date", F.to_timestamp("date"))
+
+        schema = (
+            "group string, id string, date date, cv string,"
+            "target float, prediction float"
         )
+        if pyspark.__version__ < "3":
+            pandas_udf = F.pandas_udf(
+                _cross_validate_udf,
+                schema=schema,
+                functionType=F.PandasUDFType.GROUPED_MAP,
+            )
+            cv_result = df.groupby(group_col).apply(pandas_udf)
+        else:
+            cv_result = df.groupby(group_col).applyInPandas(
+                _cross_validate_udf, schema=schema
+            )
+
         if input_type == "df_pandas":
             return cv_result.toPandas()
         else:
@@ -384,7 +426,6 @@ class ForecastFlowML:
         date_frequency = self.date_frequency
         categorical_cols = self.categorical_cols
         model_horizon = self.model_horizon
-        n_horizon = self.n_horizon
         use_lag_range = self.use_lag_range
         max_forecast_horizon = self.max_forecast_horizon
         cv_step_length = (
@@ -393,23 +434,15 @@ class ForecastFlowML:
         input_type = _check_input_type(df)
         _check_spark(self, input_type, spark)
 
-        @F.pandas_udf(
-            (
-                "group string, score float, "
-                + ", ".join(
-                    [
-                        f"{key} {type(value[0]).__name__}"
-                        for key, value in param_grid.items()
-                    ]
-                )
-            ),
-            functionType=F.PandasUDFType.GROUPED_MAP,
-        )
         def _grid_search_udf(df):
+
+            # Ensure pyarrow compatibility with old versions
+            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+                os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+
             group = df[group_col].iloc[0]
-            group_model = model[group] if isinstance(model, dict) else model
             hyperparams = {param: df[param].iloc[0] for param in param_grid.keys()}
-            group_model = model.set_params(**hyperparams)
+            try_model = model.set_params(**hyperparams)
 
             forecaster = _DirectForecaster(
                 id_col=id_col,
@@ -417,9 +450,9 @@ class ForecastFlowML:
                 date_col=date_col,
                 target_col=target_col,
                 categorical_cols=categorical_cols,
-                model=group_model,
+                model=try_model,
                 model_horizon=model_horizon,
-                n_horizon=n_horizon,
+                max_forecast_horizon=max_forecast_horizon,
                 use_lag_range=use_lag_range,
             )
 
@@ -467,10 +500,23 @@ class ForecastFlowML:
             column = F.explode(F.array([F.lit(v) for v in values]))
             df = df.withColumn(key, column)
 
+        schema = "group string, score float, " + ", ".join(
+            [f"{key} {type(value[0]).__name__}" for key, value in param_grid.items()]
+        )
+        if pyspark.__version__ < "3":
+            pandas_udf = F.pandas_udf(
+                _grid_search_udf,
+                schema=schema,
+                functionType=F.PandasUDFType.GROUPED_MAP,
+            )
+            cv_result = df.groupby([group_col, *param_grid.keys()]).apply(pandas_udf)
+        else:
+            cv_result = df.groupby([group_col, *param_grid.keys()]).applyInPandas(
+                _grid_search_udf, schema=schema
+            )
+
         return (
-            df.groupby([group_col, *param_grid.keys()])
-            .apply(_grid_search_udf)
-            .toPandas()
+            cv_result.toPandas()
             .sort_values(by=["group", "score"], ascending=False)
             .reset_index(drop=True)
         )
@@ -514,21 +560,20 @@ class ForecastFlowML:
         categorical_cols = self.categorical_cols
         model = self.model
         model_horizon = self.model_horizon
-        n_horizon = self.n_horizon
+        max_forecast_horizon = self.max_forecast_horizon
         use_lag_range = self.use_lag_range
         input_type = _check_input_type(df)
         _check_fitted(self, trained_models, spark)
         _check_spark(self, input_type, spark)
 
-        @F.pandas_udf(
-            "group string, id string, date date, prediction float",
-            functionType=F.PandasUDFType.GROUPED_MAP,
-        )
         def _predict_udf(df):
-            data = pickle.loads(df["data"].iloc[0])
+            if (pyspark.__version__ <= "2.4") & (pyarrow.__version__ >= "0.15.0"):
+                os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
+
+            data = pickle.loads(bytes(df["data"].iloc[0], "latin1"))
 
             forecast_horizon_list = list(map(tuple, df["forecast_horizon"].iloc[0]))
-            model_list = list(map(pickle.loads, df["model"].iloc[0]))
+            model_list = [pickle.loads(bytes(m, "latin1")) for m in df["model"].iloc[0]]
             model_ = {fh: model for fh, model in zip(forecast_horizon_list, model_list)}
 
             forecaster = _DirectForecaster(
@@ -539,7 +584,7 @@ class ForecastFlowML:
                 categorical_cols=categorical_cols,
                 model=model,
                 model_horizon=model_horizon,
-                n_horizon=n_horizon,
+                max_forecast_horizon=max_forecast_horizon,
                 use_lag_range=use_lag_range,
             )
             forecaster.model_ = model_
@@ -557,7 +602,17 @@ class ForecastFlowML:
         )
         df = self._predict_grid(df, trained_models)
 
-        predictions = df.groupby("group").apply(_predict_udf)
+        schema = "group:string, id:string, date:date, prediction:float"
+        if pyspark.__version__ < "3":
+            pandas_udf = F.pandas_udf(
+                _predict_udf, schema=schema, functionType=F.PandasUDFType.GROUPED_MAP
+            )
+            predictions = df.groupby(group_col).apply(pandas_udf)
+        else:
+            predictions = df.groupby(group_col).applyInPandas(
+                _predict_udf, schema=schema
+            )
+
         if input_type == "df_pandas":
             return predictions.toPandas()
         else:
