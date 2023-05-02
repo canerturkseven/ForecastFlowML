@@ -22,8 +22,6 @@ jobs:
           - toxenv: "pyspark32"
           - toxenv: "pyspark31"
           - toxenv: "pyspark30"
-          - toxenv: "pyspark24"
-          - toxenv: "pyspark23"
     steps:
       - name: checkout
         uses: actions/checkout@v3
