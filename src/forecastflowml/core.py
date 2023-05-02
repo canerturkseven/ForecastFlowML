@@ -102,7 +102,7 @@ class ForecastFlowML:
         """
 
         def _feature_importance_udf(df):
-            if pyspark.__version__ <= "2.4":
+            if pyspark.__version__ < "2.5":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             group = df["group"].iloc[0]
@@ -135,7 +135,7 @@ class ForecastFlowML:
             if pyspark.__version__ < "3":
                 pandas_udf = F.pandas_udf(
                     _feature_importance_udf,
-                    schema=schema,
+                    returnType=schema,
                     functionType=F.PandasUDFType.GROUPED_MAP,
                 )
                 return df_model.groupby("group").apply(pandas_udf).toPandas()
@@ -188,7 +188,7 @@ class ForecastFlowML:
 
         def _train_udf(df):
             # Ensure pyarrow compatibility with old versions
-            if pyspark.__version__ <= "2.4":
+            if pyspark.__version__ < "2.5":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             start = datetime.datetime.now()
@@ -235,7 +235,7 @@ class ForecastFlowML:
         )
         if pyspark.__version__ < "3":
             pandas_udf = F.pandas_udf(
-                _train_udf, schema=schema, functionType=F.PandasUDFType.GROUPED_MAP
+                _train_udf, returnType=schema, functionType=F.PandasUDFType.GROUPED_MAP
             )
             model_ = df.groupby(group_col).apply(pandas_udf)
         else:
@@ -295,7 +295,7 @@ class ForecastFlowML:
 
         def _cross_validate_udf(df):
             # Ensure pyarrow compatibility with old versions
-            if pyspark.__version__ <= "2.4":
+            if pyspark.__version__ < "2.5":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             forecaster = _DirectForecaster(
@@ -338,7 +338,7 @@ class ForecastFlowML:
         if pyspark.__version__ < "3":
             pandas_udf = F.pandas_udf(
                 _cross_validate_udf,
-                schema=schema,
+                returnType=schema,
                 functionType=F.PandasUDFType.GROUPED_MAP,
             )
             cv_result = df.groupby(group_col).apply(pandas_udf)
@@ -408,7 +408,7 @@ class ForecastFlowML:
 
         def _grid_search_udf(df):
             # Ensure pyarrow compatibility with old versions
-            if pyspark.__version__ <= "2.4":
+            if pyspark.__version__ < "2.5":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             group = df[group_col].iloc[0]
@@ -477,7 +477,7 @@ class ForecastFlowML:
         if pyspark.__version__ < "3":
             pandas_udf = F.pandas_udf(
                 _grid_search_udf,
-                schema=schema,
+                returnType=schema,
                 functionType=F.PandasUDFType.GROUPED_MAP,
             )
             cv_result = df.groupby([group_col, *param_grid.keys()]).apply(pandas_udf)
@@ -509,7 +509,7 @@ class ForecastFlowML:
         if pyspark.__version__ < "3":
             pandas_udf = F.pandas_udf(
                 _serialize_udf,
-                schema=schema,
+                returnType=schema,
                 functionType=F.PandasUDFType.GROUPED_MAP,
             )
             return df.groupby(group_col).apply(pandas_udf)
@@ -562,7 +562,7 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         def _predict_udf(df):
-            if pyspark.__version__ <= "2.4":
+            if pyspark.__version__ < "2.5":
                 os.environ["ARROW_PRE_0_15_IPC_FORMAT"] = "1"
 
             data = pickle.loads(bytes(df["data"].iloc[0], "latin1"))
@@ -599,7 +599,9 @@ class ForecastFlowML:
         schema = "group:string, id:string, date:date, prediction:float"
         if pyspark.__version__ < "3":
             pandas_udf = F.pandas_udf(
-                _predict_udf, schema=schema, functionType=F.PandasUDFType.GROUPED_MAP
+                _predict_udf,
+                returnType=schema,
+                functionType=F.PandasUDFType.GROUPED_MAP,
             )
             predictions = df.groupby("group").apply(pandas_udf)
         else:
