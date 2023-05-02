@@ -13,14 +13,10 @@ jobs:
           - version: "3.7"
             toxenv: "py37"
         pyspark: 
-          - version: "3.3.0"
-            toxenv: "pyspark33"
-          - version: "3.2.0"
-            toxenv: "pyspark32"
-          - version: "3.1.0"
-            toxenv: "pyspark31"
-          - version: "3.0.0"
-            toxenv: "pyspark30"
+          - toxenv: "pyspark33"
+          - toxenv: "pyspark32"
+          - toxenv: "pyspark31"
+          - toxenv: "pyspark30"
     steps:
       - name: checkout
         uses: actions/checkout@v3
