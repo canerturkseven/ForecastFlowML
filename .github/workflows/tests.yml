@@ -7,8 +7,8 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        #python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
         python-version: ['3.7']
+        pyspark-version: ["2.3.0","2.4.0","3.0.0","3.1.0","3.2.0","3.3.0"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: checkout
@@ -20,9 +20,11 @@ jobs:
       - name: install tox
         run: |
           python -m pip install --upgrade pip
-          pip install tox tox-gh-actions
+      - name: install pyspark
+        run: |
+          python -m pip install "pyspark==${{ matrix.pyspark-version }}"
       - name: test with tox
-        run: tox
+        run: tox -e py${{ matrix.python-version:2 }}-pyspark${{ matrix.pyspark-version:2 }} -- -v -rfs
       - name: upload coverage to codecov
         uses: codecov/codecov-action@v3
   code_quality:
