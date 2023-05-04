@@ -53,4 +53,5 @@ pip install "git+https://github.com/canerturkseven/forecastflowml"
 ## Benchmarks
 
 - [Kaggle M5 Walmart Forecasting Competition](https://www.kaggle.com/code/canerturkseven/forecastflowml-m5-forecasting-accuracy/notebook)
-  🏆 Ranks as 18th solution, with no tuning and minimal effort.
+
+  🏆 Ranks as 18th solution, with no tuning and minimal effort, runs around 30 mins.
