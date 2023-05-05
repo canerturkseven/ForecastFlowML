@@ -9,7 +9,7 @@ def spark():
         .appName("pytest-spark-session")
         .config("spark.driver.memory", "4g")
         .config("spark.sql.shuffle.partitions", "1")
-        .config("spark.sql.execution.pyarrow.enabled", "true")
+        #.config("spark.sql.execution.pyarrow.enabled", "true")
         .getOrCreate()
     )
     yield spark
