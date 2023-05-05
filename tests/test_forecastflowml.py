@@ -31,7 +31,7 @@ def df(spark):
     return df_train, df_test
 
 
-def x(spark):
+def test_x(spark):
     spark.range(10).show()
     assert 1 == 1
 
