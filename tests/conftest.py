@@ -10,6 +10,7 @@ def spark():
         .config("spark.driver.memory", "4g")
         .config("spark.sql.shuffle.partitions", "1")
         .config("spark.sql.execution.arrow.enabled", "false")
+        .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "true")
         .getOrCreate()
     )
     yield spark
