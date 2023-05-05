@@ -4,18 +4,12 @@ from datetime import date
 from forecastflowml import FeatureExtractor
 from forecastflowml.direct_forecaster import _DirectForecaster
 from lightgbm import LGBMRegressor
-from pyspark.sql import SparkSession
 from xgboost import XGBRegressor
 from sklearn.linear_model import LinearRegression
 
 
 @pytest.fixture(scope="module")
-def df():
-    spark = (
-        SparkSession.builder.master("local[1]")
-        .config("spark.sql.shuffle.partitions", 1)
-        .getOrCreate()
-    )
+def df(spark):
     df = pd.DataFrame(
         data=[
             ("0", "0", date(2023, 1, 1), 5, "a", 3),
@@ -52,7 +46,6 @@ def df():
         count_consecutive_values={"value": 0, "lags": [1, 2]},
     )
     df = feature_extractor.transform(df, spark=spark)
-    spark.stop()
     df_train = df[df["date"] < "2023-01-05"]
     df_test = df[df["date"] >= "2023-01-05"]
     return df_train, df_test

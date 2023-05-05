@@ -1,19 +1,7 @@
 import pytest
 import pandas as pd
 from datetime import date
-from pyspark.sql import SparkSession
 from forecastflowml import FeatureExtractor
-
-
-@pytest.fixture(scope="module")
-def spark():
-    spark = (
-        SparkSession.builder.master("local[1]")
-        .config("spark.sql.shuffle.partitions", 1)
-        .getOrCreate()
-    )
-    yield spark
-    spark.stop()
 
 
 @pytest.fixture(scope="module")

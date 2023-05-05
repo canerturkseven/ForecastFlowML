@@ -1,20 +1,8 @@
 import pytest
 import datetime
 import pyspark.sql.functions as F
-from pyspark.sql import SparkSession
 from forecastflowml import ForecastFlowML
 from lightgbm import LGBMRegressor
-
-
-@pytest.fixture(scope="module")
-def spark():
-    spark = (
-        SparkSession.builder.master("local[1]")
-        .config("spark.sql.shuffle.partitions", 1)
-        .getOrCreate()
-    )
-    yield spark
-    spark.stop()
 
 
 @pytest.fixture(scope="module")
