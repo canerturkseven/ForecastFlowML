@@ -36,24 +36,24 @@ def test_x(spark):
     assert 1 == 1
 
 
-# def test_train(df):
-#     df_train = df[0]
-#     n_group = df_train.select("group").dropDuplicates().count()
-#     forecast_flow = ForecastFlowML(
-#         group_col="group",
-#         id_col="id",
-#         date_col="date",
-#         target_col="target",
-#         date_frequency="days",
-#         model_horizon=1,
-#         max_forecast_horizon=2,
-#         model=LGBMRegressor(),
-#     )
-#     trained_models = forecast_flow.train(df_train).cache()
-#     trained_models.count()
-#     assert trained_models.count() == n_group
-#     assert len(trained_models.select("forecast_horizon").collect()[0][0]) == n_group
-#     assert len(trained_models.select("model").collect()[0][0]) == n_group
+def test_train(df):
+    df_train = df[0]
+    n_group = df_train.select("group").dropDuplicates().count()
+    forecast_flow = ForecastFlowML(
+        group_col="group",
+        id_col="id",
+        date_col="date",
+        target_col="target",
+        date_frequency="days",
+        model_horizon=1,
+        max_forecast_horizon=2,
+        model=LGBMRegressor(),
+    )
+    trained_models = forecast_flow.train(df_train).cache()
+    trained_models.count()
+    assert trained_models.count() == n_group
+    assert len(trained_models.select("forecast_horizon").collect()[0][0]) == n_group
+    assert len(trained_models.select("model").collect()[0][0]) == n_group
 
 
 # def test_train_local_result(df):
