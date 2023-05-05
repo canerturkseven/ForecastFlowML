@@ -4,10 +4,10 @@ on:
   - pull_request
 jobs: 
   test:
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        os: [windows-latest, ubuntu-latest]
         python: 
           - version: "3.10"
             toxenv: "py310"
@@ -22,6 +22,7 @@ jobs:
           - toxenv: "pyspark32"
           - toxenv: "pyspark31"
           - toxenv: "pyspark30"
+    runs-on: ${{ matrix.os }}
     steps:
       - name: checkout
         uses: actions/checkout@v3
