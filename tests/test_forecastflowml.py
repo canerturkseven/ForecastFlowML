@@ -33,7 +33,8 @@ def df(spark):
 
 
 def test_pandas_udf(df):
-    df = df[0]
+    df = df[0].drop("date")
+
     def udf(df_pandas):
         return df_pandas
 
