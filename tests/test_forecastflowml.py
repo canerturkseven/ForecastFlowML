@@ -49,8 +49,7 @@ def test_train(df):
         max_forecast_horizon=2,
         model=LGBMRegressor(),
     )
-    trained_models = forecast_flow.train(df_train).cache()
-    trained_models.count()
+    trained_models = forecast_flow.train(df_train)
     assert trained_models.count() == n_group
     assert len(trained_models.select("forecast_horizon").collect()[0][0]) == n_group
     assert len(trained_models.select("model").collect()[0][0]) == n_group
