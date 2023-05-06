@@ -21,6 +21,8 @@ jobs:
           - toxenv: "pyspark32"
           - toxenv: "pyspark31"
           - toxenv: "pyspark30"
+          - toxenv: "pyspark24"
+          - toxenv: "pyspark23"
     runs-on: ubuntu-latest
     steps:
       - name: checkout

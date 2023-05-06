@@ -6,8 +6,7 @@ from pyspark.sql import SparkSession
 
 @pytest.fixture(scope="session")
 def spark():
-
-    if ((pyspark.__version__ < "3.1") & (pyspark.__version__ >= "3.0")):
+    if (pyspark.__version__ < "3.1") & (pyspark.__version__ >= "3.0"):
         os.environ[
             "SPARK_SUBMIT_OPTS"
         ] = "--illegal-access=permit -Dio.netty.tryReflectionSetAccessible=true "
