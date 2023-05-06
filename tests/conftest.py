@@ -1,9 +1,17 @@
+import os
 import pytest
+import pyspark
 from pyspark.sql import SparkSession
 
 
 @pytest.fixture(scope="session")
 def spark():
+
+    if ((pyspark.__version__ < "3.1") & (pyspark.__version__ >= "3.0")):
+        os.environ[
+            "SPARK_SUBMIT_OPTS"
+        ] = "--illegal-access=permit -Dio.netty.tryReflectionSetAccessible=true "
+
     spark = (
         SparkSession.builder.master("local[1]")
         .appName("pytest-spark-session")
