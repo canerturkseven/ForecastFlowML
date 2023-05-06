@@ -17,6 +17,7 @@ jobs:
           - version: "3.7"
             toxenv: "py37"
         pyspark: 
+          - toxenv: "pyspark34"
           - toxenv: "pyspark33"
           - toxenv: "pyspark32"
           - toxenv: "pyspark31"
