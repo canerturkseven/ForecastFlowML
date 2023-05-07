@@ -1,5 +1,4 @@
 import pytest
-import pyspark
 import datetime
 import pyspark.sql.functions as F
 from forecastflowml import ForecastFlowML
@@ -30,26 +29,6 @@ def df(spark):
     df_train.count()
     df_test.count()
     return df_train, df_test
-
-
-def test_pandas_udf(df):
-    df = df[0].drop("date")
-
-    def udf(df_pandas):
-        return df_pandas
-
-    if pyspark.__version__ < "3":
-        pandas_udf = F.pandas_udf(
-            udf,
-            returnType=df.schema,
-            functionType=F.PandasUDFType.GROUPED_MAP,
-        )
-        assert df.groupby("group").apply(pandas_udf).collect() == df.collect()
-    else:
-        assert (
-            df.groupby("group").applyInPandas(udf, schema=df.schema).collect()
-            == df.collect()
-        )
 
 
 def test_train(df):

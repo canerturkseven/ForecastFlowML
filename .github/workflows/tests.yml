@@ -19,15 +19,6 @@ jobs:
           - version: "3.7"
             toxenv: "py37"
         pyspark: ["pyspark34", "pyspark33", "pyspark32", "pyspark31", "pyspark30"]
-        exclude:
-          - python: "3.11"
-            pyspark: "pyspark30"
-          - python: "3.11"
-            pyspark: "pyspark31"
-          - python: "3.11"
-            pyspark: "pyspark32"
-          - python: "3.11"
-            pyspark: "pyspark33"
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -41,9 +32,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install tox
       - name: test with tox
-        run: tox -e ${{ matrix.python.toxenv }}-${{ matrix.pyspark.toxenv }} 
+        run: tox -e ${{ matrix.python.toxenv }}-${{ matrix.pyspark }} 
       - name: upload coverage to codecov
-        if: matrix.python.version == '3.9' && matrix.pyspark.toxenv == 'pyspark33'
+        if: matrix.python.version == '3.9' && matrix.pyspark == 'pyspark33'
         uses: codecov/codecov-action@v3
   code_quality:
     runs-on: ubuntu-latest
