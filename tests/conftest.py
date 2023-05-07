@@ -1,4 +1,5 @@
 import os
+import sys
 import pytest
 import pyspark
 from pyspark.sql import SparkSession
@@ -6,10 +7,11 @@ from pyspark.sql import SparkSession
 
 @pytest.fixture(scope="session")
 def spark():
+    os.environ["PYSPARK_PYTHON"] = sys.executable
     spark_home = (
-            os.environ.get("SPARK_HOME")
-            if "SPARK_HOME" in os.environ
-            else os.path.dirname(pyspark.__file__)
+        os.environ.get("SPARK_HOME")
+        if "SPARK_HOME" in os.environ
+        else os.path.dirname(pyspark.__file__)
     )
     os.environ["SPARK_HOME"] = spark_home
 
