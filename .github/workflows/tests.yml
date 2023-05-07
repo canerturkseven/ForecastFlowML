@@ -35,7 +35,7 @@ jobs:
         with: 
           python-version: ${{ matrix.python.version }}
       - name: install Java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
           java-version: 8
       - name: set JAVA_HOME
