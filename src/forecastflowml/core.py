@@ -106,7 +106,7 @@ class ForecastFlowML:
 
             importance_list = []
             for i in range(len(df["model"].iloc[0])):
-                model = pickle.loads(bytes(df["model"].iloc[0][i], "latin1"))
+                model = pickle.loads(df["model"].iloc[0][i])
                 forecast_horizon = df["forecast_horizon"].iloc[0][i]
 
                 importance = pd.DataFrame(
@@ -131,7 +131,7 @@ class ForecastFlowML:
             )
             return df_model.groupby("group").applyInPandas(
                 _feature_importance_udf, schema=schema
-            )
+            ).toPandas()
         else:
             return (
                 self.model_.groupby("group", group_keys=False)
@@ -457,7 +457,7 @@ class ForecastFlowML:
                 ]
             )
 
-        schema = "group:string, data:string"
+        schema = "group:string, data:binary"
         return df.groupby(group_col).applyInPandas(_serialize_udf, schema=schema)
 
     def _predict_grid(self, df, trained_models):
