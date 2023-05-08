@@ -1,5 +1,3 @@
-
-
 def test_pyspark(spark):
     spark.range(10).show()
     assert True
@@ -12,6 +10,5 @@ def test_pandas_udf(spark):
         return df_pandas
 
     assert (
-            df.groupby("id").applyInPandas(udf, schema=df.schema).collect()
-            == df.collect()
-        )
+        df.groupby("id").applyInPandas(udf, schema=df.schema).collect() == df.collect()
+    )

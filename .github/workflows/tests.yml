@@ -22,7 +22,12 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
-      - name: Check Java version
+      - name: install java 8
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'oracle'
+          java-version: '8'
+      - name: check Java version
         run: java -version
       - name: setup Python
         uses: actions/setup-python@v4
