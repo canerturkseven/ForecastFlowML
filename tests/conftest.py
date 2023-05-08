@@ -7,7 +7,7 @@ from pyspark.sql import SparkSession
 
 @pytest.fixture(scope="session")
 def spark():
-    # os.environ["PYSPARK_PYTHON"] = sys.executable
+    os.environ["PYSPARK_PYTHON"] = sys.executable
     # spark_home = (
     #     os.environ.get("SPARK_HOME")
     #     if "SPARK_HOME" in os.environ
