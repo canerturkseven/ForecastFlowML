@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
+        os: [ubuntu-22.04, windows-2022]
         python: 
           - version: "3.10"
             toxenv: "py310"
@@ -17,7 +17,7 @@ jobs:
             toxenv: "py38"
           - version: "3.7"
             toxenv: "py37"
-        pyspark: ["pyspark34", "pyspark33", "pyspark32", "pyspark31", "pyspark30", "pyspark23", "pyspark24"]
+        pyspark: ["pyspark34", "pyspark33", "pyspark32", "pyspark31", "pyspark30"]
     runs-on: ${{ matrix.os}}
     steps:
       - name: checkout
