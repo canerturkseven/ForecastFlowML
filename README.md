@@ -11,11 +11,12 @@ Our package leverages the power of PySpark to efficiently handle large datasets 
 
 ForecastFlowML provides a range of features that make it a powerful and flexible tool for time-series forecasting, including:
 
-- Distributed model training per group in the PySpark DataFrames
-- Direct multi-step forecasting
-- Built-in time based cross-validation
-- Extensive time-series feature engineering (lag, rolling mean/std, stockout etc.)
-- Hyperparameter tuning for each group model with grid search
+- Works with Pandas and Pyspark DataFrames.
+- Distributed model training per group in the PySpark/Pandas DataFrames.
+- Direct multi-step forecasting.
+- Built-in time based cross-validation.
+- Extensive time-series feature engineering (lag, rolling mean/std, stockout, history length).
+- Hyperparameter tuning for each group model with grid search.
 - Supports `scikit-learn` like libraries such as `LightGBM` or `XGBoost`.
 
 Whether you're new to time-series forecasting or an experienced data scientist, ForecastFlowML can help you build and deploy accurate forecasting models at scale.
