@@ -118,8 +118,6 @@ jobs:
   build_wheels:
     name: Build wheels
     if: startsWith(github.event.ref, 'refs/tags/v')
-    needs:
-      - build_source_dist
     strategy:
       matrix:
         os: [ubuntu-22.04, windows-2022, macos-12]
@@ -147,7 +145,11 @@ jobs:
     name: Publish package
     if: startsWith(github.event.ref, 'refs/tags/v')
     needs:
+      - test
+      - black
+      - flake8
       - build_source_dist
+      - build_wheels
     runs-on: ubuntu-22.04
 
     steps:
