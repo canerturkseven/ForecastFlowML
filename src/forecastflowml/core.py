@@ -1,4 +1,3 @@
-import os
 import pickle
 import datetime
 import sklearn
@@ -129,9 +128,11 @@ class ForecastFlowML:
                 "group:string, forecast_horizon:array<int>, "
                 "feature:string, importance:float"
             )
-            return df_model.groupby("group").applyInPandas(
-                _feature_importance_udf, schema=schema
-            ).toPandas()
+            return (
+                df_model.groupby("group")
+                .applyInPandas(_feature_importance_udf, schema=schema)
+                .toPandas()
+            )
         else:
             return (
                 self.model_.groupby("group", group_keys=False)
@@ -268,7 +269,6 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         def _cross_validate_udf(df):
-
             forecaster = _DirectForecaster(
                 id_col=id_col,
                 group_col=group_col,
@@ -370,7 +370,6 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         def _grid_search_udf(df):
-
             group = df[group_col].iloc[0]
             hyperparams = {param: df[param].iloc[0] for param in param_grid.keys()}
             try_model = model.set_params(**hyperparams)
@@ -506,7 +505,6 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         def _predict_udf(df):
-
             data = pickle.loads(df["data"].iloc[0])
             forecast_horizon_list = list(map(tuple, df["forecast_horizon"].iloc[0]))
             model_list = [pickle.loads(m) for m in df["model"].iloc[0]]
