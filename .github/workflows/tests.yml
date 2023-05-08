@@ -1,4 +1,4 @@
-name: forecastflowml
+name: tests
 on:
   - push
   - pull_request
