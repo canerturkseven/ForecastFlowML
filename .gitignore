@@ -5,6 +5,7 @@ dist/
 *.egg-info
 *.csv
 .tox/
+build/
 docs/**/*.parquet
 docs/build/
 docs/jupyter_execute/
