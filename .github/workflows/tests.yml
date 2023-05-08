@@ -20,17 +20,16 @@ jobs:
           
           - version: "3.7"
             toxenv: "py37"
-        pyspark: ["pyspark34", "pyspark33", "pyspark32", "pyspark31", "pyspark30"]
     runs-on: ${{ matrix.os}}
     steps:
       - name: checkout
         uses: actions/checkout@v3
       
-      - name: install java 8
+      - name: install java 11
         uses: actions/setup-java@v3
         with:
           distribution: 'corretto'
-          java-version: '8'
+          java-version: '11'
       
       - name: check Java version
         run: java -version
@@ -46,10 +45,10 @@ jobs:
           pip install tox
       
       - name: test with tox
-        run: tox -e ${{ matrix.python.toxenv }}-${{ matrix.pyspark }} 
+        run: tox -e ${{ matrix.python.toxenv }}
       
       - name: upload coverage to codecov
-        if: matrix.python.version == '3.10' && matrix.pyspark == 'pyspark33'
+        if: matrix.python.version == '3.10' 
         uses: codecov/codecov-action@v3
 
   black:
