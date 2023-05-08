@@ -21,13 +21,6 @@ ForecastFlowML provides a range of features that make it a powerful and flexible
 Whether you're new to time-series forecasting or an experienced data scientist, ForecastFlowML can help you build and deploy accurate forecasting models at scale.
 
 
-Benchmarks
-----------
-
-- `Kaggle M5 Walmart Forecasting Competition Notebook <https://www.kaggle.com/code/canerturkseven/forecastflowml-m5-forecasting-accuracy/notebook/>`_
-  
-  🏆 Ranks as 18th solution, with no tuning and minimal effort.
-
 Installation
 ------------
 
@@ -35,7 +28,7 @@ You can install the packaging using the following command.
 
 ::
 
-    pip install "git+https://github.com/canerturkseven/forecastflowml"
+    pip install forecastflowml
 
 
 .. toctree::
