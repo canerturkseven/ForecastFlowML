@@ -21,8 +21,14 @@ jobs:
             toxenv: "py37"
         pyspark: ["pyspark34", "pyspark33", "pyspark32", "pyspark31", "pyspark30"]
         exclude: 
-          - python: "3.11"
+          - python.version: "3.11"
             pyspark: "pyspark33"
+          - python.version: "3.11"
+            pyspark: "pyspark32"
+          - python.version: "3.11"
+            pyspark: "pyspark31"
+          - python.version: "3.11"
+            pyspark: "pyspark30"
     runs-on: ${{ matrix.os}}
     steps:
       - name: checkout
