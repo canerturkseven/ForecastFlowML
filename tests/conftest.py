@@ -15,10 +15,10 @@ def spark():
     # )
     # os.environ["SPARK_HOME"] = spark_home
 
-    if pyspark.__version__ < "3.1":
-        os.environ[
-            "SPARK_SUBMIT_OPTS"
-        ] = "--illegal-access=permit -Dio.netty.tryReflectionSetAccessible=true "
+    # if pyspark.__version__ < "3.1":
+    #     os.environ[
+    #         "SPARK_SUBMIT_OPTS"
+    #     ] = "--illegal-access=permit -Dio.netty.tryReflectionSetAccessible=true "
 
     spark = (
         SparkSession.builder.master("local[1]")
