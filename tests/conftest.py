@@ -7,7 +7,7 @@ from pyspark.sql import SparkSession
 
 @pytest.fixture(scope="session")
 def spark():
-    os.environ["PYSPARK_PYTHON"] = sys.executable
+    # os.environ["PYSPARK_PYTHON"] = sys.executable
     # spark_home = (
     #     os.environ.get("SPARK_HOME")
     #     if "SPARK_HOME" in os.environ
@@ -26,7 +26,6 @@ def spark():
         .config("spark.driver.memory", "4g")
         .config("spark.sql.shuffle.partitions", "1")
         .config("spark.sql.execution.pyarrow.enabled", "true")
-        .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "true")
         .getOrCreate()
     )
     yield spark
