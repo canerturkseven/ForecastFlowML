@@ -205,8 +205,8 @@ class _TimeBasedSplit:
                 train_start = train_end - relativedelta(
                     **{date_frequency: max_train_size}
                 )
-                train_condition = df[date_col].between(
-                    train_start, train_end, inclusive="right"
+                train_condition = (df[date_col] <= train_end) & (
+                    df[date_col] > train_start
                 )
             else:
                 train_condition = df[date_col] <= train_end
