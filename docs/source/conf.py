@@ -18,6 +18,9 @@ exclude_patterns = []
 html_theme = "pydata_sphinx_theme"
 html_static_path = ["_static"]
 html_theme_options = {
+    "logo": {
+        "text": "ForecastFlowML",
+    },
     "icon_links": [
         {
             "name": "GitHub",
@@ -31,6 +34,12 @@ html_theme_options = {
         },
     ],
     "show_prev_next": False,
+    "switcher": {
+        "json_url": "https://forecastflowml.readthedocs.io/en/latest/_static/switcher.json",
+        "version_match": "latest",
+    },
+    "check_switcher": False,
+    "navbar_center": ["version-switcher", "navbar-nav"],
 }
 html_js_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
