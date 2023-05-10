@@ -44,5 +44,5 @@ html_theme_options = {
 html_js_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
 ]
-nb_execution_timeout = -1
-nb_execution_mode = "off"
+nb_execution_timeout = 600
+nb_execution_mode = "force"
