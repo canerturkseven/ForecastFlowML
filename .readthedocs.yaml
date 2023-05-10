@@ -5,7 +5,7 @@ build:
   tools:
     python: "3.10"
   apt_packages:
-    - openjdk-11-jdk
+    - openjdk-8-jdk
 
 sphinx:
    configuration: docs/source/conf.py
