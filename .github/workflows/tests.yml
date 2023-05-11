@@ -24,7 +24,6 @@ jobs:
           - version: "3.7"
             toxenv: "py37"
     runs-on: ${{ matrix.os}}
-    if: runner.os == 'Windows'
     env:
       PYTHON_SPARK: python
     steps:
