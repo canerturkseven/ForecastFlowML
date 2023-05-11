@@ -24,6 +24,9 @@ jobs:
           - version: "3.7"
             toxenv: "py37"
     runs-on: ${{ matrix.os}}
+    if: runner.os == 'Windows'
+    env:
+      PYTHON_SPARK: python
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -37,6 +40,9 @@ jobs:
       - name: check Java version
         run: java -version
       
+      - name: check PYSPARK_PYTHON env variable
+        run: echo "$PYSPARK_PYTHON"
+
       - name: setup Python
         uses: actions/setup-python@v4
         with: 
