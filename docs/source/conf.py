@@ -45,4 +45,4 @@ html_js_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
 ]
 nb_execution_timeout = 600
-nb_execution_mode = "force"
+nb_execution_mode = "off"
