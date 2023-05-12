@@ -24,6 +24,8 @@ jobs:
           - version: "3.7"
             toxenv: "py37"
     runs-on: ${{ matrix.os}}
+    env:
+      PYTHON_SPARK: python
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -51,7 +53,7 @@ jobs:
         run: tox -e ${{ matrix.python.toxenv }}
       
       - name: upload coverage to codecov
-        if: matrix.python.version == '3.10' 
+        if: matrix.python.version == '3.10' && matrix.os == 'ubuntu_22.04'
         uses: codecov/codecov-action@v3
 
   black:
