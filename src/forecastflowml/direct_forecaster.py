@@ -88,7 +88,6 @@ class _DirectForecaster:
     def predict(self, df):
         df = df.copy()
         df = self._convert_categorical(df)
-        group = df[self.group_col].iloc[0]
 
         result_list = []
         for forecast_horizon, model in self.model_.items():
@@ -99,10 +98,8 @@ class _DirectForecaster:
             result_list.append(model_data)
 
         prediction = pd.concat(result_list).reset_index(drop=True)
-        prediction["group"] = group
-        prediction = prediction.rename(
-            columns={self.id_col: "id", self.date_col: "date"}
-        )
-        prediction = prediction.loc[:, ["group", "id", "date", "prediction"]]
+        prediction = prediction.loc[
+            :, [self.group_col, self.id_col, self.date_col, "prediction"]
+        ]
 
         return prediction

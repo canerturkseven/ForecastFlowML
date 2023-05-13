@@ -18,6 +18,11 @@ def _cross_val_predict(
     cv,
     refit,
 ):
+    group_col = forecaster.group_col
+    id_col = forecaster.id_col
+    date_col = forecaster.date_col
+    target_col = forecaster.target_col
+
     cv_predictions_list = []
     for i, fold in enumerate(cv):
         train_idx, test_idx = fold[0], fold[1]
@@ -28,12 +33,12 @@ def _cross_val_predict(
 
         prediction = forecaster.predict(df_test)
         prediction["cv"] = str(i)
-        prediction["target"] = df_test[forecaster.target_col].values
+        prediction[target_col] = df_test[target_col].values
         cv_predictions_list.append(prediction)
 
     cv_predictions = pd.concat(cv_predictions_list).reset_index(drop=True)
     cv_predictions = cv_predictions[
-        ["group", "id", "date", "cv", "target", "prediction"]
+        [group_col, id_col, date_col, "cv", target_col, "prediction"]
     ]
 
     return cv_predictions

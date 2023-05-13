@@ -99,9 +99,10 @@ class ForecastFlowML:
         -------
             DataFrame that includes the feature importances.
         """
+        group_col = self.group_col
 
         def _feature_importance_udf(df):
-            group = df["group"].iloc[0]
+            group = df[group_col].iloc[0]
 
             importance_list = []
             for i in range(len(df["model"].iloc[0])):
@@ -119,23 +120,23 @@ class ForecastFlowML:
                 importance_list.append(importance)
 
             df_importance = pd.concat(importance_list)
-            df_importance.insert(0, "group", group)
+            df_importance.insert(0, group_col, group)
 
             return df_importance
 
         if df_model is not None:
             schema = (
-                "group:string, forecast_horizon:array<int>, "
+                f"{group_col}:string, forecast_horizon:array<int>, "
                 "feature:string, importance:float"
             )
             return (
-                df_model.groupby("group")
+                df_model.groupby(group_col)
                 .applyInPandas(_feature_importance_udf, schema=schema)
                 .toPandas()
             )
         else:
             return (
-                self.model_.groupby("group", group_keys=False)
+                self.model_.groupby(group_col, group_keys=False)
                 .apply(_feature_importance_udf)
                 .reset_index(drop=True)
             )
@@ -197,7 +198,7 @@ class ForecastFlowML:
             return pd.DataFrame(
                 [
                     {
-                        "group": df[group_col].iloc[0],
+                        group_col: df[group_col].iloc[0],
                         "forecast_horizon": [list(x) for x in forecaster.model_.keys()],
                         "model": [pickle.dumps(x) for x in forecaster.model_.values()],
                         "start_time": start.strftime("%d-%b-%Y (%H:%M:%S)"),
@@ -211,7 +212,7 @@ class ForecastFlowML:
         df = df.withColumn(date_col, F.to_timestamp(date_col))
 
         schema = (
-            "group:string, forecast_horizon:array<array<int>>, model:array<binary>,"
+            f"{group_col}:string, forecast_horizon:array<array<int>>, model:array<binary>,"
             "start_time:string, end_time:string, elapsed_seconds:float"
         )
         model_ = df.groupby(group_col).applyInPandas(_train_udf, schema=schema)
@@ -303,8 +304,8 @@ class ForecastFlowML:
         df = df.withColumn(date_col, F.to_timestamp(date_col))
 
         schema = (
-            "group string, id string, date date, cv string,"
-            "target float, prediction float"
+            f"{group_col}:string, {id_col}:string, {date_col}:date, cv:string,"
+            f"{target_col}:float, prediction:float"
         )
         cv_result = df.groupby(group_col).applyInPandas(
             _cross_validate_udf, schema=schema
@@ -370,7 +371,6 @@ class ForecastFlowML:
         _check_spark(self, input_type, spark)
 
         def _grid_search_udf(df):
-            group = df[group_col].iloc[0]
             hyperparams = {param: df[param].iloc[0] for param in param_grid.keys()}
             try_model = model.set_params(**hyperparams)
 
@@ -405,7 +405,9 @@ class ForecastFlowML:
             score = (
                 cv_predictions.groupby("cv")
                 .apply(
-                    lambda x: _score_func(x["target"], x["prediction"], scoring_metric)
+                    lambda x: _score_func(
+                        x[target_col], x["prediction"], scoring_metric
+                    )
                 )
                 .mean()
             )
@@ -414,7 +416,7 @@ class ForecastFlowML:
                 [
                     {
                         **{
-                            "group": group,
+                            group_col: df[group_col].iloc[0],
                             "score": score,
                         },
                         **hyperparams,
@@ -430,7 +432,7 @@ class ForecastFlowML:
             column = F.explode(F.array([F.lit(v) for v in values]))
             df = df.withColumn(key, column)
 
-        schema = "group string, score float, " + ", ".join(
+        schema = f"{group_col}:string, score:float, " + ", ".join(
             [f"{key} {type(value[0]).__name__}" for key, value in param_grid.items()]
         )
         result = df.groupby([group_col, *param_grid.keys()]).applyInPandas(
@@ -439,7 +441,7 @@ class ForecastFlowML:
 
         return (
             result.toPandas()
-            .sort_values(by=["group", "score"], ascending=False)
+            .sort_values(by=[group_col, "score"], ascending=False)
             .reset_index(drop=True)
         )
 
@@ -450,20 +452,20 @@ class ForecastFlowML:
             return pd.DataFrame(
                 [
                     {
-                        "group": df[group_col].iloc[0],
+                        group_col: df[group_col].iloc[0],
                         "data": pickle.dumps(df),
                     }
                 ]
             )
 
-        schema = "group:string, data:binary"
+        schema = f"{group_col}:string, data:binary"
         return df.groupby(group_col).applyInPandas(_serialize_udf, schema=schema)
 
     def _predict_grid(self, df, trained_models):
         df = self._serialize(df)
         df = df.join(
-            trained_models.select("group", "forecast_horizon", "model"),
-            on="group",
+            trained_models.select(self.group_col, "forecast_horizon", "model"),
+            on=self.group_col,
             how="left",
         )
         return df
@@ -536,8 +538,10 @@ class ForecastFlowML:
         )
         df = self._predict_grid(df, trained_models)
 
-        schema = "group:string, id:string, date:date, prediction:float"
-        predictions = df.groupby("group").applyInPandas(_predict_udf, schema=schema)
+        schema = (
+            f"{group_col}:string, {id_col}:string, {date_col}:date, prediction:float"
+        )
+        predictions = df.groupby(group_col).applyInPandas(_predict_udf, schema=schema)
 
         if input_type == "df_pandas":
             return predictions.toPandas()
