@@ -208,7 +208,7 @@ class ForecastFlowML:
             )
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn("date", F.to_timestamp("date"))
+        df = df.withColumn(date_col, F.to_timestamp(date_col))
 
         schema = (
             "group:string, forecast_horizon:array<array<int>>, model:array<binary>,"
@@ -300,7 +300,7 @@ class ForecastFlowML:
             return cv_predictions
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn("date", F.to_timestamp("date"))
+        df = df.withColumn(date_col, F.to_timestamp(date_col))
 
         schema = (
             "group string, id string, date date, cv string,"
@@ -423,7 +423,7 @@ class ForecastFlowML:
             )
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn("date", F.to_timestamp("date"))
+        df = df.withColumn(date_col, F.to_timestamp(date_col))
 
         for key in param_grid.keys():
             values = param_grid[key]
@@ -527,7 +527,7 @@ class ForecastFlowML:
             return prediction
 
         df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn("date", F.to_timestamp("date"))
+        df = df.withColumn(date_col, F.to_timestamp(date_col))
 
         trained_models = (
             spark.createDataFrame(self.model_)
