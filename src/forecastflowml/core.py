@@ -165,6 +165,7 @@ class ForecastFlowML:
         """
         id_col = self.id_col
         date_col = self.date_col
+        date_frequency = self.date_frequency
         categorical_cols = self.categorical_cols
         model_horizon = self.model_horizon
         group_col = self.group_col
@@ -182,6 +183,7 @@ class ForecastFlowML:
                 id_col=id_col,
                 group_col=group_col,
                 date_col=date_col,
+                date_frequency=date_frequency,
                 target_col=target_col,
                 categorical_cols=categorical_cols,
                 model=model,
@@ -274,6 +276,7 @@ class ForecastFlowML:
                 id_col=id_col,
                 group_col=group_col,
                 date_col=date_col,
+                date_frequency=date_frequency,
                 target_col=target_col,
                 categorical_cols=categorical_cols,
                 model=model,
@@ -304,7 +307,7 @@ class ForecastFlowML:
         df = df.withColumn(date_col, F.to_timestamp(date_col))
 
         schema = (
-            f"{group_col}:string, {id_col}:string, {date_col}:date, cv:string,"
+            f"{group_col}:string, {id_col}:string, {date_col}:timestamp, cv:string,"
             f"{target_col}:float, prediction:float"
         )
         cv_result = df.groupby(group_col).applyInPandas(
@@ -378,6 +381,7 @@ class ForecastFlowML:
                 id_col=id_col,
                 group_col=group_col,
                 date_col=date_col,
+                date_frequency=date_frequency,
                 target_col=target_col,
                 categorical_cols=categorical_cols,
                 model=try_model,
@@ -496,6 +500,7 @@ class ForecastFlowML:
         id_col = self.id_col
         group_col = self.group_col
         date_col = self.date_col
+        date_frequency = self.date_frequency
         target_col = self.target_col
         categorical_cols = self.categorical_cols
         model = self.model
@@ -516,6 +521,7 @@ class ForecastFlowML:
                 id_col=id_col,
                 group_col=group_col,
                 date_col=date_col,
+                date_frequency=date_frequency,
                 target_col=target_col,
                 categorical_cols=categorical_cols,
                 model=model,
@@ -538,9 +544,7 @@ class ForecastFlowML:
         )
         df = self._predict_grid(df, trained_models)
 
-        schema = (
-            f"{group_col}:string, {id_col}:string, {date_col}:date, prediction:float"
-        )
+        schema = f"{group_col}:string, {id_col}:string, {date_col}:timestamp, prediction:float"
         predictions = df.groupby(group_col).applyInPandas(_predict_udf, schema=schema)
 
         if input_type == "df_pandas":

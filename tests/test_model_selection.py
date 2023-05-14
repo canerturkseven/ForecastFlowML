@@ -143,6 +143,7 @@ def test_cross_val_predict(df, n_splits, model_horizon, max_forecast_horizon):
         id_col="id",
         group_col="group",
         date_col="date",
+        date_frequency="days",
         target_col="target",
         model=LGBMRegressor(),
         model_horizon=model_horizon,

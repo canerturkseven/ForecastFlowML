@@ -1,6 +1,7 @@
 import re
 import copy
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 
 class _DirectForecaster:
@@ -9,6 +10,7 @@ class _DirectForecaster:
         id_col,
         group_col,
         date_col,
+        date_frequency,
         target_col,
         model,
         model_horizon,
@@ -19,6 +21,7 @@ class _DirectForecaster:
         self.id_col = id_col
         self.group_col = group_col
         self.date_col = date_col
+        self.date_frequency = date_frequency
         self.target_col = target_col
         self.categorical_cols = categorical_cols
         self.model = model
@@ -33,8 +36,11 @@ class _DirectForecaster:
         return df
 
     def _filter_horizon(self, df, forecast_horizon):
-        dates = df[self.date_col].sort_values().unique()
-        forecast_dates = dates[[fh - 1 for fh in forecast_horizon]]
+        min_date = df[self.date_col].min()
+        forecast_dates = [
+            min_date + ((fh - 1) * relativedelta(**{self.date_frequency: 1}))
+            for fh in forecast_horizon
+        ]
         return df[df[self.date_col].isin(forecast_dates)].copy()
 
     def _forecast_horizon(self, i):
