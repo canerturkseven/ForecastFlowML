@@ -92,7 +92,7 @@ def _date_features(df, date_col, features):
         if feature == "weekend":
             df = df.withColumn(
                 feature,
-                F.when(F.dayofweek(F.col(date_col)).isin([6, 7]), 1)
+                F.when(F.dayofweek(F.col(date_col)).isin([1, 7]), 1)
                 .otherwise(0)
                 .cast("tinyint"),
             )
