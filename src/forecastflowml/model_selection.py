@@ -33,7 +33,11 @@ def _cross_val_predict(
 
         prediction = forecaster.predict(df_test)
         prediction["cv"] = str(i)
-        prediction[target_col] = df_test[target_col].values
+        prediction = prediction.merge(
+            df_test[[id_col, date_col, target_col]],
+            on=[id_col, date_col],
+            how="left",
+        )
         cv_predictions_list.append(prediction)
 
     cv_predictions = pd.concat(cv_predictions_list).reset_index(drop=True)

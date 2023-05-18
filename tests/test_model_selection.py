@@ -129,9 +129,6 @@ def test_time_based_split(
 )
 def test_cross_val_predict(df, n_splits, model_horizon, max_forecast_horizon):
     df = df[0]
-    n_splits = 2
-    model_horizon = 1
-    max_forecast_horizon = 2
     forecast_horizon = list(range(1, max_forecast_horizon + 1))
     cv_model = _TimeBasedSplit(
         date_frequency="days",
