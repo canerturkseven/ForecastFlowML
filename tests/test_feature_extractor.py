@@ -204,9 +204,9 @@ def test_count_consecutive_values(
             ],
             ["id", "date", "target"],
             [
-                ("0", date(2023, 4, 10), 0, 2),
-                ("0", date(2023, 4, 15), 0, 7),
-                ("0", date(2023, 4, 16), 0, 1),
+                ("0", date(2023, 4, 10), 0, 1),
+                ("0", date(2023, 4, 15), 0, 6),
+                ("0", date(2023, 4, 16), 0, 7),
             ],
             ["id", "date", "target", "day_of_week"],
         ),
