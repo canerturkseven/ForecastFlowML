@@ -73,7 +73,12 @@ def _date_features(df, date_col, features):
 
     for feature in features:
         if feature == "day_of_week":
-            df = df.withColumn(feature, F.dayofweek(F.col(date_col)).cast("tinyint"))
+            df = df.withColumn(
+                feature, F.dayofweek(F.col(date_col)).cast("tinyint") - 1
+            )
+            df = df.withColumn(
+                feature, F.when(F.col(feature) == 0, 7).otherwise(F.col(feature))
+            )
         if feature == "day_of_year":
             df = df.withColumn(feature, F.dayofyear(F.col(date_col)).cast("smallint"))
         if feature == "day_of_month":
@@ -87,7 +92,7 @@ def _date_features(df, date_col, features):
         if feature == "weekend":
             df = df.withColumn(
                 feature,
-                F.when(F.dayofweek(F.col(date_col)).isin([1, 7]), 1)
+                F.when(F.dayofweek(F.col(date_col)).isin([6, 7]), 1)
                 .otherwise(0)
                 .cast("tinyint"),
             )
