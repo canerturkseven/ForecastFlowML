@@ -48,9 +48,6 @@ specializes in predicting different forecast horizon.
    :alt: Image description
    :align: center
 
-.. warning::
-   Recursive multi-step forecasting approach will be supported in the future.
-
 Feature Engineering
 ===================
 

@@ -1,5 +1,5 @@
 import pytest
-import pandas as pd
+import pyspark.sql.functions as F
 from datetime import date
 from forecastflowml import FeatureExtractor
 from forecastflowml.direct_forecaster import _DirectForecaster
@@ -10,7 +10,7 @@ from sklearn.linear_model import LinearRegression
 
 @pytest.fixture(scope="module")
 def df(spark):
-    df = pd.DataFrame(
+    df = spark.createDataFrame(
         data=[
             ("0", "0", date(2023, 1, 1), 5, "a", 3),
             ("0", "0", date(2023, 1, 2), 2, "a", 5),
@@ -25,7 +25,7 @@ def df(spark):
             ("0", "1", date(2023, 1, 5), 2, "b", 2),
             ("0", "1", date(2023, 1, 6), 2, "b", 2),
         ],
-        columns=[
+        schema=[
             "group",
             "id",
             "date",
@@ -34,7 +34,7 @@ def df(spark):
             "target",
         ],
     )
-    df["date"] = pd.to_datetime(df["date"])
+    df = df.withColumn("date", F.to_timestamp("date"))
     feature_extractor = FeatureExtractor(
         id_col="id",
         date_col="date",
@@ -45,7 +45,7 @@ def df(spark):
         },
         count_consecutive_values={"value": 0, "lags": [1, 2]},
     )
-    df = feature_extractor.transform(df, spark=spark)
+    df = feature_extractor.transform(df).toPandas()
     df_train = df[df["date"] < "2023-01-05"]
     df_test = df[df["date"] >= "2023-01-05"]
     return df_train, df_test
@@ -80,7 +80,7 @@ def test_convert_categorical(df):
 def test_filter_horizon(
     df, model_horizon, max_forecast_horizon, forecast_horizon, expected_dates
 ):
-    df_test = df[1].copy()
+    df_test = df[1]
     forecaster = _DirectForecaster(
         id_col="id",
         group_col="group",
