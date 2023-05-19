@@ -19,35 +19,23 @@ ForecastFlowML provides a range of features that make it a powerful and flexible
 - Hyperparameter tuning for each group model with grid search.
 - Supports `scikit-learn` like libraries such as `LightGBM` or `XGBoost`.
 
-Whether you're new to time-series forecasting or an experienced data scientist, ForecastFlowML can help you build and deploy accurate forecasting models at scale.
-
 ## Documentation
 
 Reach to our latest documentation [here](https://forecastflowml.readthedocs.io/en/latest/).
 
-### Get Started
+### User Guides
 
 [What is ForecastFlowML?](https://forecastflowml.readthedocs.io/en/latest/forecastflowml.html)
-
-[Quick Start](https://forecastflowml.readthedocs.io/en/latest/notebooks/quick_start.html)
-
-### User Guide
-
 [Feature Engineering](https://forecastflowml.readthedocs.io/en/latest/notebooks/feature_engineering.html)
-
 [Time Series Cross Validation](https://forecastflowml.readthedocs.io/en/latest/notebooks/cross_validation.html)
-
 [Grid Search](https://forecastflowml.readthedocs.io/en/latest/notebooks/grid_search.html)
-
 [Feature Importance](https://forecastflowml.readthedocs.io/en/latest/notebooks/feature_importance.html)
-
 [Save/Load ForecastFlowML](https://forecastflowml.readthedocs.io/en/latest/notebooks/save_load.html)
 
-## Benchmarks
+### Examples
 
-[Kaggle Walmart M5 Forecasting Competition](https://www.kaggle.com/code/canerturkseven/forecastflowml-m5-forecasting-accuracy)
-
-- Ranks as 18th solution in late submission with minimal effort.
+[Kaggle Walmart M5 Forecasting Competition (18th solution)](https://www.kaggle.com/code/canerturkseven/forecastflowml-m5-forecasting-accuracy)
+[Retail Demand Forecasting](https://forecastflowml.readthedocs.io/en/latest/notebooks/retail_demand_forecasting.html)
 
 ## Installation
 

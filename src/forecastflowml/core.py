@@ -4,13 +4,11 @@ import sklearn
 import pyspark
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark.sql import SparkSession
 from forecastflowml.model_selection import (
     _cross_val_predict,
     _score_func,
     _TimeBasedSplit,
 )
-from forecastflowml.utils import _check_input_type, _check_spark, _check_fitted
 from forecastflowml.direct_forecaster import _DirectForecaster
 from typing import List, Optional, Union, Dict
 
@@ -83,6 +81,28 @@ class ForecastFlowML:
         """
         self._model_ = value
 
+    def _check_input_type(self, df: pyspark.sql.DataFrame) -> None:
+        if not isinstance(df, pyspark.sql.dataframe.DataFrame):
+            raise NotImplementedError(
+                "Input is expected to be pyspark.sql.dataframe.DataFrame"
+            )
+        else:
+            pass
+
+    def _check_fitted(
+        self,
+        trained_models: pyspark.sql.DataFrame,
+        spark: pyspark.sql.SparkSession,
+    ) -> None:
+        if (not hasattr(self, "model_")) & (trained_models is None):
+            raise ValueError(
+                "fit method should be called before predict or trained_models needs to be supplied"
+            )
+        if (trained_models is None) & (hasattr(self, "model_")) & ((spark is None)):
+            raise ValueError(
+                "spark instance must be supplied in case of local_result was set to True during training"
+            )
+
     def get_feature_importance(
         self,
         df_model: Optional[pyspark.sql.DataFrame] = None,
@@ -143,8 +163,7 @@ class ForecastFlowML:
 
     def train(
         self,
-        df: Union[pd.DataFrame, pyspark.sql.DataFrame],
-        spark: Optional[SparkSession] = None,
+        df: pyspark.sql.DataFrame,
         local_result: bool = False,
     ) -> Union[None, pd.DataFrame]:
         """Train models
@@ -153,15 +172,13 @@ class ForecastFlowML:
         ----------
         df
             Dataset to fit.
-        spark
-            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
         local_result
             Whether to store trained models as attribute. Only provide ``True``
             in case of the trained models are not expected to overload the driver node.
 
         Returns
         -------
-            None if ``df`` is pandas DataFrame or ``local_result=True``. Otherwise, pyspark DataFrame that includes the trained models.
+            None if ``local_result=True``. Otherwise, pyspark DataFrame that includes the trained models.
         """
         id_col = self.id_col
         date_col = self.date_col
@@ -173,8 +190,7 @@ class ForecastFlowML:
         max_forecast_horizon = self.max_forecast_horizon
         use_lag_range = self.use_lag_range
         model = self.model
-        input_type = _check_input_type(df)
-        _check_spark(self, input_type, spark)
+        self._check_input_type(df)
 
         def _train_udf(df):
             start = datetime.datetime.now()
@@ -210,29 +226,29 @@ class ForecastFlowML:
                 ]
             )
 
-        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn(date_col, F.to_timestamp(date_col))
-
         schema = (
             f"{group_col}:string, forecast_horizon:array<array<int>>, model:array<binary>,"
             "start_time:string, end_time:string, elapsed_seconds:float"
         )
-        model_ = df.groupby(group_col).applyInPandas(_train_udf, schema=schema)
+        model_ = (
+            df.withColumn(date_col, F.to_timestamp(date_col))
+            .groupby(group_col)
+            .applyInPandas(_train_udf, schema=schema)
+        )
 
-        if (input_type == "df_pandas") | (local_result):
+        if local_result:
             self.model_ = model_.toPandas()
         else:
             return model_
 
     def cross_validate(
         self,
-        df,
+        df: pyspark.sql.DataFrame,
         n_cv_splits: int = 3,
         max_train_size: Optional[int] = None,
         cv_step_length: Optional[int] = None,
         refit: bool = True,
-        spark: Optional[SparkSession] = None,
-    ) -> Union[pd.DataFrame, pyspark.sql.DataFrame]:
+    ) -> pyspark.sql.DataFrame:
         """Time series cross validation predictions
 
         Parameters
@@ -247,8 +263,6 @@ class ForecastFlowML:
             Number of periods to put between each cv folds.
         refit
             Whether to refit model for each training dataset.
-        spark
-            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
 
         Returns
         -------
@@ -268,8 +282,7 @@ class ForecastFlowML:
         cv_step_length = (
             max_forecast_horizon if cv_step_length is None else cv_step_length
         )
-        input_type = _check_input_type(df)
-        _check_spark(self, input_type, spark)
+        self._check_input_type(df)
 
         def _cross_validate_udf(df):
             forecaster = _DirectForecaster(
@@ -303,33 +316,27 @@ class ForecastFlowML:
 
             return cv_predictions
 
-        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn(date_col, F.to_timestamp(date_col))
-
         schema = (
             f"{group_col}:string, {id_col}:string, {date_col}:timestamp, cv:string,"
             f"{target_col}:float, prediction:float"
         )
-        cv_result = df.groupby(group_col).applyInPandas(
-            _cross_validate_udf, schema=schema
+        cv_result = (
+            df.withColumn(date_col, F.to_timestamp(date_col))
+            .groupby(group_col)
+            .applyInPandas(_cross_validate_udf, schema=schema)
         )
-
-        if input_type == "df_pandas":
-            return cv_result.toPandas()
-        else:
-            return cv_result
+        return cv_result
 
     def grid_search(
         self,
-        df: Union[pd.DataFrame, pyspark.sql.DataFrame],
+        df: pyspark.sql.DataFrame,
         param_grid: Dict[str, List[Union[str, float, int]]],
         n_cv_splits: int = 3,
         max_train_size: Optional[int] = None,
         cv_step_length: Optional[int] = None,
         scoring_metric: str = "neg_mean_squared_error",
         refit: bool = True,
-        spark: Optional[SparkSession] = None,
-    ) -> pd.DataFrame:
+    ) -> pyspark.sql.DataFrame:
         """Grid search with time series cross validation.
 
         Parameters
@@ -350,8 +357,6 @@ class ForecastFlowML:
             See list of available metrics: https://scikit-learn.org/stable/modules/model_evaluation.html.
         refit
             Whether to refit model for each training dataset.
-        spark
-            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
 
         Returns
         -------
@@ -370,8 +375,7 @@ class ForecastFlowML:
         cv_step_length = (
             max_forecast_horizon if cv_step_length is None else cv_step_length
         )
-        input_type = _check_input_type(df)
-        _check_spark(self, input_type, spark)
+        self._check_input_type(df)
 
         def _grid_search_udf(df):
             hyperparams = {param: df[param].iloc[0] for param in param_grid.keys()}
@@ -421,33 +425,28 @@ class ForecastFlowML:
                     {
                         **{
                             group_col: df[group_col].iloc[0],
-                            "score": score,
+                            scoring_metric: score,
                         },
                         **hyperparams,
                     }
                 ]
             )
 
-        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn(date_col, F.to_timestamp(date_col))
-
         for key in param_grid.keys():
             values = param_grid[key]
             column = F.explode(F.array([F.lit(v) for v in values]))
             df = df.withColumn(key, column)
 
-        schema = f"{group_col}:string, score:float, " + ", ".join(
+        schema = f"{group_col}:string, {scoring_metric}:float, " + ", ".join(
             [f"{key} {type(value[0]).__name__}" for key, value in param_grid.items()]
         )
-        result = df.groupby([group_col, *param_grid.keys()]).applyInPandas(
-            _grid_search_udf, schema=schema
+        result = (
+            df.withColumn(date_col, F.to_timestamp(date_col))
+            .groupby([group_col, *param_grid.keys()])
+            .applyInPandas(_grid_search_udf, schema=schema)
         )
 
-        return (
-            result.toPandas()
-            .sort_values(by=[group_col, "score"], ascending=False)
-            .reset_index(drop=True)
-        )
+        return result.orderBy(group_col, scoring_metric, ascending=False).toPandas()
 
     def _serialize(self, df):
         group_col = self.group_col
@@ -476,10 +475,10 @@ class ForecastFlowML:
 
     def predict(
         self,
-        df: pd.DataFrame,
+        df: pyspark.sql.DataFrame,
         trained_models=None,
         spark=None,
-    ) -> Union[pd.DataFrame, pyspark.sql.DataFrame]:
+    ) -> pyspark.sql.DataFrame:
         """Make predictions
 
         Parameters
@@ -491,7 +490,7 @@ class ForecastFlowML:
             Does not need to be provided in case ``local_result``
             is set to ``True`` during training.
         spark
-            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
+            Spark session instance. Only provide when ``local_result=True`` during training.
 
         Returns
         -------
@@ -507,9 +506,8 @@ class ForecastFlowML:
         model_horizon = self.model_horizon
         max_forecast_horizon = self.max_forecast_horizon
         use_lag_range = self.use_lag_range
-        input_type = _check_input_type(df)
-        _check_fitted(self, trained_models, spark)
-        _check_spark(self, input_type, spark)
+        self._check_input_type(df)
+        self._check_fitted(trained_models, spark)
 
         def _predict_udf(df):
             data = pickle.loads(df["data"].iloc[0])
@@ -534,20 +532,15 @@ class ForecastFlowML:
 
             return prediction
 
-        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
-        df = df.withColumn(date_col, F.to_timestamp(date_col))
-
         trained_models = (
             spark.createDataFrame(self.model_)
-            if ((trained_models is None) | (input_type == "df_pandas"))
+            if (trained_models is None)
             else trained_models
         )
+        df = df.withColumn(date_col, F.to_timestamp(date_col))
         df = self._predict_grid(df, trained_models)
 
         schema = f"{group_col}:string, {id_col}:string, {date_col}:timestamp, prediction:float"
         predictions = df.groupby(group_col).applyInPandas(_predict_udf, schema=schema)
 
-        if input_type == "df_pandas":
-            return predictions.toPandas()
-        else:
-            return predictions
+        return predictions

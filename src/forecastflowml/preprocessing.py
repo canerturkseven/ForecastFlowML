@@ -1,9 +1,6 @@
 import pyspark
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
-from pyspark.sql import SparkSession
-import pandas as pd
-from forecastflowml.utils import _check_input_type, _check_spark
 from typing import Dict, List, Optional, Union
 
 
@@ -180,27 +177,27 @@ class FeatureExtractor:
         self.count_consecutive_values = count_consecutive_values
         self.history_length = history_length
 
-    def transform(
-        self,
-        df: Union[pd.DataFrame, pyspark.sql.DataFrame],
-        spark: Optional[SparkSession] = None,
-    ) -> Union[pd.DataFrame, pyspark.sql.DataFrame]:
+    def _check_input_type(self, df: pyspark.sql.DataFrame) -> None:
+        if not isinstance(df, pyspark.sql.dataframe.DataFrame):
+            raise NotImplementedError(
+                "Input is expected to be pyspark.sql.dataframe.DataFrame"
+            )
+        else:
+            pass
+
+    def transform(self, df: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
         """Extract features
 
         Parameters
         ----------
         df
             DataFrame to extract features.
-        spark
-            Spark session instance. Only provide when ``df`` is a pandas DataFrame.
 
         Returns
         -------
             DataFrame with features added.
         """
-        input_type = _check_input_type(df)
-        _check_spark(df, input_type, spark)
-        df = spark.createDataFrame(df) if input_type == "df_pandas" else df
+        self._check_input_type(df)
 
         if self.lag_window_features is not None:
             df = _lag_window_summarizer(
@@ -224,7 +221,4 @@ class FeatureExtractor:
         if self.date_features is not None:
             df = _date_features(df, self.date_col, self.date_features)
 
-        if input_type == "df_pandas":
-            df = df.toPandas()
-            df[self.date_col] = pd.to_datetime(df[self.date_col])
         return df
