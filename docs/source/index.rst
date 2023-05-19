@@ -11,25 +11,12 @@ Features
 
 ForecastFlowML provides a range of features that make it a powerful and flexible tool for time-series forecasting, including:
 
-- Works with Pandas and Pyspark DataFrames.
-- Distributed model training per group in the dataframe.
+- Parallel model training per group in the dataframe.
 - Direct multi-step forecasting.
 - Built-in time based cross-validation,
 - Extensive time-series feature engineering (lag, rolling mean/std, stockout, history length).
 - Hyperparameter tuning for each group model with grid search.
 - Supports ``scikit-learn`` like libraries such as ``LightGBM`` or ``XGBoost``.
-
-Whether you're new to time-series forecasting or an experienced data scientist, ForecastFlowML can help you build and deploy accurate forecasting models at scale.
-
-
-Benchmarks
-----------
-
-- `Kaggle Walmart M5 Forecasting Competition`_
-
-.. _Kaggle Walmart M5 Forecasting Competition: https://www.kaggle.com/code/canerturkseven/forecastflowml-m5-forecasting-accuracy
-
-Ranks as 18th solution in late submission with minimal effort
 
 
 Installation
@@ -67,6 +54,6 @@ In the python script, set PYSPARK_PYTHON environment variable to your Python exe
    :maxdepth: 1
    :hidden:
 
-   get_started
-   user_guide
+   user_guides
+   examples
    api_reference
