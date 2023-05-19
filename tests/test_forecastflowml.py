@@ -138,7 +138,7 @@ def test_grid_search(df):
         model=LGBMRegressor(),
     )
     result = forecast_flow.grid_search(df_train, param_grid=param_grid, n_cv_splits=1)
-    assert result.count() == n_group * len(param_grid["n_estimators"])
+    assert len(result) == n_group * len(param_grid["n_estimators"])
 
 
 def test_feature_importance(df):
