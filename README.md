@@ -11,11 +11,10 @@ Our package leverages the power of PySpark to efficiently handle large datasets 
 
 ForecastFlowML provides a range of features that make it a powerful and flexible tool for time-series forecasting, including:
 
-- Works with Pandas and Pyspark DataFrames.
-- Distributed model training per group in the dataframe.
+- Scaleable and extensive time series feature engineering (lag, rolling mean/std, stockout, history length) with PySpark.
+- Parallel model training per group in the dataset with Pyspark Pandas UDFs.
 - Direct multi-step forecasting.
 - Built-in time based cross-validation.
-- Extensive time-series feature engineering (lag, rolling mean/std, stockout, history length).
 - Hyperparameter tuning for each group model with grid search.
 - Supports `scikit-learn` like libraries such as `LightGBM` or `XGBoost`.
 
@@ -26,15 +25,21 @@ Reach to our latest documentation [here](https://forecastflowml.readthedocs.io/e
 ### User Guides
 
 [What is ForecastFlowML?](https://forecastflowml.readthedocs.io/en/latest/forecastflowml.html)
+
 [Feature Engineering](https://forecastflowml.readthedocs.io/en/latest/notebooks/feature_engineering.html)
+
 [Time Series Cross Validation](https://forecastflowml.readthedocs.io/en/latest/notebooks/cross_validation.html)
+
 [Grid Search](https://forecastflowml.readthedocs.io/en/latest/notebooks/grid_search.html)
+
 [Feature Importance](https://forecastflowml.readthedocs.io/en/latest/notebooks/feature_importance.html)
+
 [Save/Load ForecastFlowML](https://forecastflowml.readthedocs.io/en/latest/notebooks/save_load.html)
 
 ### Examples
 
 [Kaggle Walmart M5 Forecasting Competition (18th solution)](https://www.kaggle.com/code/canerturkseven/forecastflowml-m5-forecasting-accuracy)
+
 [Retail Demand Forecasting](https://forecastflowml.readthedocs.io/en/latest/notebooks/retail_demand_forecasting.html)
 
 ## Installation
