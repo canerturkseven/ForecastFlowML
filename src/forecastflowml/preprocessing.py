@@ -163,6 +163,7 @@ class FeatureExtractor:
         date_col: str,
         target_col: str,
         max_forecast_horizon: int = 1,
+        lags: int = 0,
         lag_window_features: Optional[Dict[str, List[Union[int, List[int]]]]] = None,
         date_features: List[str] = None,
         count_consecutive_values: Optional[
