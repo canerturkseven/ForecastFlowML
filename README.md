@@ -20,7 +20,7 @@ ForecastFlowML provides a range of features that make it a powerful and flexible
 
 ## Documentation
 
-Reach to our latest documentation [here](https://forecastflowml.readthedocs.io/en/latest/).
+Reach out to our latest documentation [here](https://forecastflowml.readthedocs.io/en/latest/).
 
 ### User Guides
 
